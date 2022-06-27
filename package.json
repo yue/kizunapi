@@ -9,7 +9,7 @@
     "src"
   ],
   "scripts": {
-    "build": "scripts/build.js"
+    "test": "node scripts/test.js"
   },
   "readme": "README.md",
   "license": "MIT",

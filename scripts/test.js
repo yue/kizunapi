@@ -13,7 +13,31 @@ const __filename = url.fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const gnDir = path.join(__dirname, '..', 'deps', 'gn')
 
-if (!fs.existsSync(gnDir)) {
+if (!fs.existsSync(gnDir))
+  await downloadGN()
+
+if (!fs.existsSync('out'))
+  runSync(path.join(gnDir, 'gn'), ['gen', 'out'])
+
+runSync(path.join(gnDir, 'ninja'), ['-C', 'out'])
+runSync(path.join('out', 'nb_tests'))
+
+function runSync(exec, args = [], options = {}) {
+  // Print command output by default.
+  if (!options.stdio)
+    options.stdio = 'inherit'
+  // Merge the custom env to global env.
+  if (options.env)
+    options.env = Object.assign(options.env, process.env)
+  const result = cp.spawnSync(exec, args, options)
+  if (result.error)
+    throw result.error
+  if (result.signal)
+    throw new Error(`Process aborted with ${result.signal}`)
+  return result
+}
+
+async function downloadGN() {
   const os = {
     linux: 'linux',
     win32: 'win',
@@ -30,22 +54,4 @@ if (!fs.existsSync(gnDir)) {
   })
   await extract('gn.zip', {dir: gnDir})
   fs.unlinkSync('gn.zip')
-}
-
-runSync(path.join(gnDir, 'gn'), ['gen', 'out'])
-runSync(path.join(gnDir, 'ninja'), ['-C', 'out'])
-
-function runSync(exec, args, options = {}) {
-  // Print command output by default.
-  if (!options.stdio)
-    options.stdio = 'inherit'
-  // Merge the custom env to global env.
-  if (options.env)
-    options.env = Object.assign(options.env, process.env)
-  const result = cp.spawnSync(exec, args, options)
-  if (result.error)
-    throw result.error
-  if (result.signal)
-    throw new Error(`Process aborted with ${result.signal}`)
-  return result
 }
