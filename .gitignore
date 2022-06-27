@@ -1,0 +1,12 @@
+# npm generated files
+/node_modules
+/package-lock.json
+
+# generated files
+/out
+*.log
+*.swp
+
+# downloaded files
+/deps/gn
+/deps/libyue

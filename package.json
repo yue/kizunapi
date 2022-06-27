@@ -1,0 +1,39 @@
+{
+  "description": "C++ Wrappers of Node-API",
+  "name": "napi-bind",
+  "main": "index.js",
+  "version": "1.0.0",
+  "gypfile": false,
+  "type": "module",
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "build": "scripts/build.js"
+  },
+  "readme": "README.md",
+  "license": "MIT",
+  "homepage": "https://github.com/zcbenz/napi-bind",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/zcbenz/napi-bind.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zcbenz/napi-bind/issues"
+  },
+  "keywords": [
+    "n-api",
+    "napi",
+    "addon",
+    "native",
+    "bindings",
+    "c",
+    "c++",
+    "nan",
+    "node-addon-api"
+  ],
+  "devDependencies": {
+    "extract-zip": "2.0.1",
+    "node-fetch": "3.2.6"
+  }
+}
