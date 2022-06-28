@@ -3,10 +3,7 @@
 /package-lock.json
 
 # generated files
-/out
+/build
+/test/build
 *.log
 *.swp
-
-# downloaded files
-/deps/gn
-/deps/libyue

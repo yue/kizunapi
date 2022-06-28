@@ -4,12 +4,10 @@
   "main": "index.js",
   "version": "1.0.0",
   "gypfile": false,
-  "type": "module",
-  "files": [
-    "src"
-  ],
+  "files": [ "*.h" ],
   "scripts": {
-    "test": "node scripts/test.js"
+    "pretest": "node-gyp rebuild -C test",
+    "test": "node test"
   },
   "readme": "README.md",
   "license": "MIT",
@@ -33,7 +31,6 @@
     "node-addon-api"
   ],
   "devDependencies": {
-    "extract-zip": "2.0.1",
-    "node-fetch": "3.2.6"
+    "node-gyp": "9.0.0"
   }
 }
