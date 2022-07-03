@@ -8,9 +8,9 @@
     "*.h"
   ],
   "scripts": {
-    "pretest": "node-gyp rebuild -C test",
+    "pretest": "node-gyp rebuild --debug -C test",
     "test": "node test",
-    "test:incremental": "node-gyp build -C test && node test"
+    "test:incremental": "node-gyp build --debug -C test && node test"
   },
   "readme": "README.md",
   "license": "MIT",

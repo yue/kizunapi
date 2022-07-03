@@ -2,7 +2,7 @@ const fs = require('fs')
 const path = require('path')
 const assert = require('assert-simple-tap')
 
-const bindings = require('./build/Release/nb_tests')
+const bindings = require('./build/Debug/nb_tests')
 
 for (const f of fs.readdirSync(__dirname)) {
   if (!f.endsWith('_tests.js'))

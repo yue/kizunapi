@@ -7,6 +7,7 @@
       ],
       'sources': [
         'main.cc',
+        'callback_tests.cc',
         'types_tests.cc',
       ],
     }

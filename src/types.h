@@ -5,10 +5,13 @@
 #ifndef SRC_TYPES_H_
 #define SRC_TYPES_H_
 
+#include <vector>
 #include <string>
 
 #include <assert.h>
 #include <node_api.h>
+
+#include "src/template_util.h"
 
 namespace nb {
 
@@ -138,9 +141,10 @@ struct Type<std::string> {
     if (s != napi_ok)
       return s;
     if (length > 0) {
+      out->reserve(length + 1);
       out->resize(length);
-      return napi_get_value_string_utf8(env, value, &out->front(), length,
-                                        nullptr);
+      return napi_get_value_string_utf8(env, value, &out->front(),
+                                        out->capacity(), nullptr);
     } else {
       out->clear();
       return napi_ok;
@@ -164,9 +168,10 @@ struct Type<std::u16string> {
     if (s != napi_ok)
       return s;
     if (length > 0) {
+      out->reserve(length + 1);
       out->resize(length);
-      return napi_get_value_string_utf16(env, value, &out->front(), length,
-                                         nullptr);
+      return napi_get_value_string_utf16(env, value, &out->front(),
+                                         out->capacity(), nullptr);
     } else {
       out->clear();
       return napi_ok;
@@ -216,15 +221,15 @@ struct Type<char16_t[n]> {
 
 // Helpers
 template<typename T>
-inline napi_value ToNode(napi_env env, const T& type) {
-  napi_value value = nullptr;
-  napi_status s = Type<T>::ToNode(env, type, &value);
+inline napi_value ToNode(napi_env env, const T& value) {
+  napi_value result = nullptr;
+  napi_status s = Type<T>::ToNode(env, value, &result);
   if (s != napi_ok) {
     // Return undefined on error.
-    s = napi_get_undefined(env, &value);
+    s = napi_get_undefined(env, &result);
     assert(s == napi_ok);
   }
-  return value;
+  return result;
 }
 
 template<typename T>

@@ -5,7 +5,7 @@
 #ifndef NBIND_H_
 #define NBIND_H_
 
-#include "src/types.h"
+#include "src/callback.h"
 #include "src/dict.h"
 
 #endif  // NBIND_H_
