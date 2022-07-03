@@ -4,10 +4,13 @@
   "main": "index.js",
   "version": "1.0.0",
   "gypfile": false,
-  "files": [ "*.h" ],
+  "files": [
+    "*.h"
+  ],
   "scripts": {
     "pretest": "node-gyp rebuild -C test",
-    "test": "node test"
+    "test": "node test",
+    "test:incremental": "node-gyp build -C test && node test"
   },
   "readme": "README.md",
   "license": "MIT",
@@ -31,6 +34,7 @@
     "node-addon-api"
   ],
   "devDependencies": {
+    "assert-simple-tap": "^3.0.0",
     "node-gyp": "9.0.0"
   }
 }

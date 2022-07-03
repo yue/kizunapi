@@ -7,6 +7,7 @@
       ],
       'sources': [
         'main.cc',
+        'types_tests.cc',
       ],
     }
   ]
