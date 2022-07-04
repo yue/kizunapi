@@ -8,4 +8,5 @@ exports.runTests = (assert, binding) => {
   assert.equal(binding.ustring, 'ustring', 'ToNode ustring')
   assert.equal(binding.charptr, 'チャーポインター', 'ToNode charptr')
   assert.equal(binding.ucharptr, 'ucharptr', 'ToNode ucharptr')
+  assert.equal(typeof binding.symbol, 'symbol', 'ToNode symbol')
 }

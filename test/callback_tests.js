@@ -1,7 +1,7 @@
 exports.runTests = (assert, binding) => {
   assert.deepStrictEqual(binding.returnVoid(), undefined,
                          'Callback void return value converts to undefined')
-  assert.equal(binding.addOne(123), 124, 'C Callback convert arg from js')
+  assert.equal(binding.addOne(123), 124, 'Callback convert arg from js')
 
   binding.method.call(binding.object, 1)
   assert.equal(binding.data.call(binding.object), 8964,

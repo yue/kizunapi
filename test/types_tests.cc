@@ -10,5 +10,6 @@ void run_types_tests(napi_env env, napi_value binding) {
           "string", std::string("字符串"),
           "ustring", std::u16string(u"ustring"),
           "charptr", "チャーポインター",
-          "ucharptr", u"ucharptr");
+          "ucharptr", u"ucharptr",
+          "symbol", nb::Symbol("sym"));
 }

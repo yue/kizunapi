@@ -219,11 +219,38 @@ struct Type<char16_t[n]> {
   }
 };
 
+// Optimized helper for creating symbols.
+template<size_t n>
+struct SymbolHolder {
+  const char* str;
+};
+
+template<size_t n>
+inline SymbolHolder<n> Symbol(const char (&value)[n]) {
+  SymbolHolder<n> holder;
+  holder.str = value;
+  return holder;
+}
+
+template<size_t n>
+struct Type<SymbolHolder<n>> {
+  static constexpr const char* name = "Symbol";
+  static inline napi_status ToNode(napi_env env,
+                                   SymbolHolder<n> value,
+                                   napi_value* result) {
+    napi_value name;
+    napi_status s = Type<char[n]>::ToNode(env, value.str, &name);
+    if (s != napi_ok)
+      return s;
+    return napi_create_symbol(env, name, result);
+  }
+};
+
 // Helpers
-template<typename T>
-inline napi_value ToNode(napi_env env, const T& value) {
+template<typename Out, typename In>
+inline napi_value IgnoreStatus(napi_env env, In value) {
   napi_value result = nullptr;
-  napi_status s = Type<T>::ToNode(env, value, &result);
+  napi_status s = Type<Out>::ToNode(env, value, &result);
   if (s != napi_ok) {
     // Return undefined on error.
     s = napi_get_undefined(env, &result);
@@ -233,8 +260,29 @@ inline napi_value ToNode(napi_env env, const T& value) {
 }
 
 template<typename T>
+inline napi_value ToNode(napi_env env, const T& value) {
+  return IgnoreStatus<T>(env, value);
+}
+
+template<typename T>
+inline napi_value ToNode(napi_env env, T&& value) {
+  return IgnoreStatus<std::decay_t<T>>(env, std::forward<T>(value));
+}
+
+template<typename T>
 inline bool FromNode(napi_env env, napi_value value, T* out) {
   return Type<T>::FromNode(env, value, out) == napi_ok;
+}
+
+// Optimized version for string iterals.
+template<size_t n>
+inline napi_value ToNode(napi_env env, const char (&value)[n]) {
+  return IgnoreStatus<char[n]>(env, value);
+}
+
+template<size_t n>
+inline napi_value ToNode(napi_env env, const char16_t (&value)[n]) {
+  return IgnoreStatus<char16_t[n]>(env, value);
 }
 
 }  // namespace nb
