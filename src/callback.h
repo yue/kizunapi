@@ -9,21 +9,6 @@
 
 namespace nb {
 
-// Create a JS Function that executes a provided C++ function or std::function.
-// JavaScript arguments are automatically converted via Type<T>, as is
-// the return value of the C++ function, if any.
-template<typename Sig>
-inline napi_status CreateNodeFunction(napi_env env,
-                                      std::function<Sig> value,
-                                      napi_value* result,
-                                      int flags = 0) {
-  using HolderT = internal::CallbackHolder<Sig>;
-  return napi_create_function(env, nullptr, 0,
-                              &internal::Dispatcher<Sig>::DispatchToCallback,
-                              new HolderT(env, std::move(value), flags),
-                              result);
-}
-
 // Define how callbacks are converted.
 template<typename ReturnType, typename... ArgTypes>
 struct Type<std::function<ReturnType(ArgTypes...)>> {
@@ -32,7 +17,7 @@ struct Type<std::function<ReturnType(ArgTypes...)>> {
   static inline napi_status ToNode(napi_env env,
                                    std::function<Sig> value,
                                    napi_value* result) {
-    return CreateNodeFunction(env, std::move(value), result);
+    return internal::CreateNodeFunction(env, std::move(value), result);
   }
   static napi_status FromNode(napi_env env,
                               napi_value value,
@@ -62,9 +47,7 @@ struct Type<T, typename std::enable_if<
                    internal::is_function_pointer<T>::value>::type> {
   static constexpr const char* name = "Function";
   static inline napi_status ToNode(napi_env env, T value, napi_value* result) {
-    using RunType = typename internal::FunctorTraits<T>::RunType;
-    using CallbackType = std::function<RunType>;
-    return CreateNodeFunction(env, CallbackType(value), result);
+    return internal::CreateNodeFunction(env, value, result);
   }
 };
 
@@ -74,10 +57,7 @@ struct Type<T, typename std::enable_if<
                    std::is_member_function_pointer<T>::value>::type> {
   static constexpr const char* name = "Function";
   static inline napi_status ToNode(napi_env env, T value, napi_value* result) {
-    using RunType = typename internal::FunctorTraits<T>::RunType;
-    using CallbackType = std::function<RunType>;
-    return CreateNodeFunction(env, CallbackType(value), result,
-                              HolderIsFirstArgument);
+    return internal::CreateNodeFunction(env, value, result);
   }
 };
 

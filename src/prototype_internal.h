@@ -34,23 +34,6 @@ inline napi_value DummyConstructor(napi_env env, napi_callback_info info) {
   return nullptr;
 }
 
-// Similar to Dispatcher but does not convert the return type.
-template<typename Sig>
-struct InvokeConstructor {};
-
-template<typename T, typename... ArgTypes>
-struct InvokeConstructor<T*(ArgTypes...)> {
-  static T* Do(Arguments* args) {
-    using HolderT = CallbackHolder<T*(ArgTypes...)>;
-    HolderT* holder = static_cast<HolderT*>(args->Data());
-    using Indices = typename IndicesGenerator<sizeof...(ArgTypes)>::type;
-    Invoker<Indices, ArgTypes...> invoker(args);
-    if (!invoker.IsOK())
-      return nullptr;
-    return invoker.DispatchToCallback(holder->callback);
-  }
-};
-
 // Define T's constructor according to its type traits.
 template<typename T, typename Enable = void>
 struct DefineClass {
@@ -69,7 +52,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
   static napi_status Do(napi_env env, napi_value* prototype) {
     return napi_define_class(
         env, Type<T>::name, NAPI_AUTO_LENGTH, &DispatchToCallback,
-        new CallbackHolder<Sig>(env, &Type<T>::Constructor),
+        new CallbackHolder<Sig>{&Type<T>::Constructor},
         0, nullptr, prototype);
   }
   static napi_value DispatchToCallback(napi_env env, napi_callback_info info) {
@@ -82,7 +65,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     if (IsCalledFromConverter(args))
       return nullptr;
     // Invoke native constructor.
-    T* ptr = InvokeConstructor<Sig>::Do(&args);
+    T* ptr = CFunctionInvoker<Sig>::Invoke(&args);
     if (!ptr) {
       napi_throw_error(env, nullptr, "Unable to invoke constructor.");
       return nullptr;
