@@ -219,6 +219,11 @@ struct Type<char16_t[n]> {
   }
 };
 
+template<>
+struct Type<napi_env> {
+  static constexpr const char* name = "Environment";
+};
+
 // Optimized helper for creating symbols.
 template<size_t n>
 struct SymbolHolder {
@@ -248,7 +253,7 @@ struct Type<SymbolHolder<n>> {
 
 // Helpers
 template<typename Out, typename In>
-inline napi_value IgnoreStatus(napi_env env, In value) {
+inline napi_value ConvertIgnoringStatus(napi_env env, In value) {
   napi_value result = nullptr;
   napi_status s = Type<Out>::ToNode(env, value, &result);
   if (s != napi_ok) {
@@ -261,12 +266,12 @@ inline napi_value IgnoreStatus(napi_env env, In value) {
 
 template<typename T>
 inline napi_value ToNode(napi_env env, const T& value) {
-  return IgnoreStatus<T>(env, value);
+  return ConvertIgnoringStatus<T>(env, value);
 }
 
 template<typename T>
 inline napi_value ToNode(napi_env env, T&& value) {
-  return IgnoreStatus<std::decay_t<T>>(env, std::forward<T>(value));
+  return ConvertIgnoringStatus<std::decay_t<T>>(env, std::forward<T>(value));
 }
 
 template<typename T>
@@ -277,12 +282,12 @@ inline bool FromNode(napi_env env, napi_value value, T* out) {
 // Optimized version for string iterals.
 template<size_t n>
 inline napi_value ToNode(napi_env env, const char (&value)[n]) {
-  return IgnoreStatus<char[n]>(env, value);
+  return ConvertIgnoringStatus<char[n]>(env, value);
 }
 
 template<size_t n>
 inline napi_value ToNode(napi_env env, const char16_t (&value)[n]) {
-  return IgnoreStatus<char16_t[n]>(env, value);
+  return ConvertIgnoringStatus<char16_t[n]>(env, value);
 }
 
 }  // namespace nb

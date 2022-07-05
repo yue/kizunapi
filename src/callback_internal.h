@@ -41,7 +41,7 @@ struct CallbackParamTraits<const char*&> {
 template<typename Sig>
 struct CallbackHolder {
  public:
-  CallbackHolder(napi_env env, std::function<Sig> callback, int flags)
+  CallbackHolder(napi_env env, std::function<Sig> callback, int flags = 0)
       : callback(std::move(callback)), flags(flags) {}
 
   CallbackHolder& operator=(const CallbackHolder&) = delete;
@@ -162,7 +162,7 @@ class Invoker<IndicesHolder<indices...>, ArgTypes...>
   // C++ has always been strict about the class initialization order,
   // so it is guaranteed ArgumentHolders will be initialized (and thus, will
   // extract arguments from Arguments) in the right order.
-  Invoker(Arguments* args, int create_flags)
+  Invoker(Arguments* args, int create_flags = 0)
       : ArgumentHolder<indices, ArgTypes>(args, create_flags)..., args_(args) {
     // GCC thinks that create_flags is going unused, even though the
     // expansion above clearly makes use of it. Per jyasskin@, casting

@@ -20,8 +20,9 @@ napi_value Init(napi_env env, napi_value exports) {
 #if defined(WIN32)
   SetErrorMode(GetErrorMode() & ~SEM_NOGPFAULTERRORBOX);
 #endif
-  TEST(types);
   TEST(callback);
+  TEST(prototype);
+  TEST(types);
   return exports;
 }
 

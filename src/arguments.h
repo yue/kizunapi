@@ -50,7 +50,7 @@ inline std::string NodeTypeToString(napi_env env, napi_value value) {
 // to make it easier to marshall arguments and return values between V8 and C++.
 class Arguments {
  public:
-  Arguments(napi_env env, napi_callback_info info) : env_(env) {
+  Arguments(napi_env env, napi_callback_info info) : env_(env), info_(info) {
     napi_status s = napi_get_cb_info(env, info, &argc_, NULL, NULL, NULL);
     assert(s == napi_ok);
     argv_.resize(argc_);
@@ -62,6 +62,10 @@ class Arguments {
 
   ~Arguments() = default;
 
+  napi_value operator[](size_t index) const {
+    return argv_[index];
+  }
+
   template<typename T>
   bool GetNext(T* out) {
     if (next_ >= Length()) {
@@ -72,8 +76,18 @@ class Arguments {
   }
 
   template<typename T>
-  bool GetThis(T* out) {
+  bool GetThis(T* out) const {
     return FromNode(env_, this_, out);
+  }
+
+  napi_value GetThis() const {
+    return this_;
+  }
+
+  bool IsConstructorCall() const {
+    napi_value new_target;
+    napi_status s = napi_get_new_target(env_, info_, &new_target);
+    return s == napi_ok && new_target;
   }
 
   void ThrowError(const char* target_type_name) const {
@@ -103,6 +117,7 @@ class Arguments {
 
  private:
   napi_env env_;
+  napi_callback_info info_;
 
   size_t argc_ = 0;
   std::vector<napi_value> argv_;
@@ -111,6 +126,16 @@ class Arguments {
 
   size_t next_ = 0;
   bool insufficient_arguments_ = false;
+};
+
+template<>
+struct Type<Arguments> {
+  static constexpr const char* name = "Arguments";
+};
+
+template<>
+struct Type<Arguments*> {
+  static constexpr const char* name = "Arguments";
 };
 
 }  // namespace nb
