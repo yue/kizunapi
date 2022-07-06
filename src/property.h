@@ -1,6 +1,5 @@
-// Copyright 2022 Cheng Zhao. All rights reserved.
-// Use of this source code is governed by the license that can be found in the
-// LICENSE file.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 #ifndef SRC_PROPERTY_H_
 #define SRC_PROPERTY_H_
