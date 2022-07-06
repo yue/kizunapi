@@ -72,7 +72,8 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     }
     // Then wrap the native pointer.
     napi_status s = napi_wrap(env, args.GetThis(), ptr,
-                              [](napi_env, void* ptr, void*) {
+                              [](napi_env env, void* ptr, void*) {
+      InstanceData::Get(env)->Remove(ptr);
       Type<T>::Destructor(static_cast<T*>(ptr));
     }, nullptr, nullptr);
     if (s != napi_ok) {

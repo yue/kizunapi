@@ -49,9 +49,10 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value>::type> {
       return s;
     // Wrap the |ptr| into JS object.
     void* data = Type<T>::Wrap(ptr);
-    s = napi_wrap(env, object, data, [](napi_env env, void* data, void*) {
+    s = napi_wrap(env, object, data, [](napi_env env, void* data, void* ptr) {
+      InstanceData::Get(env)->Remove(ptr);
       Type<T>::Finalize(data);
-    }, nullptr, nullptr);
+    }, ptr, nullptr);
     if (s != napi_ok) {
       Type<T>::Finalize(data);
       return s;

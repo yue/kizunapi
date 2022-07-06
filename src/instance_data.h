@@ -43,6 +43,10 @@ class InstanceData {
     return true;
   }
 
+  void Remove(void* key) {
+    handles_.erase(key);
+  }
+
  private:
   explicit InstanceData(napi_env env) : env_(env) {}
 
