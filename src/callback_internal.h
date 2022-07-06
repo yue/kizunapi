@@ -7,6 +7,7 @@
 #include <functional>
 
 #include "src/arguments.h"
+#include "src/napi_util.h"
 #include "src/persistent.h"
 
 namespace nb {
@@ -39,8 +40,13 @@ struct CallbackParamTraits<const char*&> {
 // through DispatchToCallback, where it is invoked.
 template<typename Sig>
 struct CallbackHolder {
+  CallbackHolder(std::function<Sig> callback, int flags = 0)
+      : callback(std::move(callback)), flags(flags) {}
+  CallbackHolder(const CallbackHolder<Sig>&) = default;
+  CallbackHolder(CallbackHolder<Sig>&&) = default;
+
   std::function<Sig> callback;
-  int flags = 0;
+  int flags;
 };
 
 template<typename T>
@@ -273,11 +279,18 @@ inline napi_status CreateNodeFunction(napi_env env, T func,
   using Factory = CallbackHolderFactory<T>;
   using RunType = typename Factory::RunType;
   using HolderT = typename Factory::HolderT;
-  HolderT holder = Factory::Create(std::move(func));
-  return napi_create_function(env, nullptr, 0,
-                              &CFunctionWrapper<RunType>::Call,
-                              new HolderT{std::move(holder)},
-                              result);
+  auto holder = std::make_unique<HolderT>(Factory::Create(std::move(func)));
+  napi_value intermediate;
+  napi_status s = napi_create_function(env, nullptr, 0,
+                                       &CFunctionWrapper<RunType>::Call,
+                                       holder.get(), &intermediate);
+  if (s != napi_ok)
+    return s;
+  s = AddToFinalizer(env, intermediate, std::move(holder));
+  if (s != napi_ok)
+    return s;
+  *result = intermediate;
+  return napi_ok;
 }
 
 // Helper to invoke a V8 function with C++ parameters.

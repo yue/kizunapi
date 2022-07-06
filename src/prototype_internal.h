@@ -43,16 +43,24 @@ struct DefineClass {
   }
 };
 
-
 template<typename T>
 struct DefineClass<T, typename std::enable_if<is_function_pointer<
                            decltype(&Type<T>::Constructor)>::value>::type> {
   using Sig = typename FunctorTraits<decltype(&Type<T>::Constructor)>::RunType;
+  using HolderT = CallbackHolder<Sig>;
   static napi_status Do(napi_env env, napi_value* prototype) {
-    return napi_define_class(
+    auto holder = std::make_unique<HolderT>(&Type<T>::Constructor);
+    napi_value result;
+    napi_status s = napi_define_class(
         env, Type<T>::name, NAPI_AUTO_LENGTH, &DispatchToCallback,
-        new CallbackHolder<Sig>{&Type<T>::Constructor},
-        0, nullptr, prototype);
+        holder.get(), 0, nullptr, &result);
+    if (s != napi_ok)
+      return s;
+    s = AddToFinalizer(env, result, std::move(holder));
+    if (s != napi_ok)
+      return s;
+    *prototype = result;
+    return napi_ok;
   }
   static napi_value DispatchToCallback(napi_env env, napi_callback_info info) {
     Arguments args(env, info);

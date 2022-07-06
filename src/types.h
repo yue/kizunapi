@@ -250,7 +250,7 @@ struct Type<SymbolHolder<n>> {
   }
 };
 
-// Helpers
+// Convert from In to Out and ignore error.
 template<typename Out, typename In>
 inline napi_value ConvertIgnoringStatus(napi_env env, In value) {
   napi_value result = nullptr;

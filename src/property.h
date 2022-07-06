@@ -90,64 +90,62 @@ struct Property {
   }
 };
 
+using PropertyList = std::vector<Property>;
+
+namespace internal {
+
 // Invoke a property method.
-template<internal::PropertyMethodType type>
+template<PropertyMethodType type>
 napi_value InvokePropertyMethod(napi_env env, napi_callback_info info) {
   Arguments args(env, info);
   Property* property = static_cast<Property*>(args.Data());
-  using Type = internal::PropertyMethodType;
-  if (type == Type::Method)
+  if (type == PropertyMethodType::Method)
     return property->method(env, info);
-  if (type == Type::Getter)
+  if (type == PropertyMethodType::Getter)
     return property->getter(env, info);
-  if (type == Type::Setter)
+  if (type == PropertyMethodType::Setter)
     return property->setter(env, info);
 }
 
-using PropertyList = std::initializer_list<Property>;
-
-// Define properties on an |object|.
-inline bool DefineProperties(napi_env env,
-                             napi_value object,
-                             PropertyList props) {
-  std::vector<napi_property_descriptor> descriptors(props.size());
-  for (size_t i = 0; i < props.size(); ++i) {
-    // Attach the property holder to object.
-    Property* p = new Property(std::move(*(props.begin() + i)));
-    napi_status s = napi_add_finalizer(env, object, p,
-                                       [](napi_env, void* p, void*) {
-      delete static_cast<Property*>(p);
-    }, nullptr, nullptr);
-    if (s != napi_ok) {
-      delete p;
-      return false;
-    }
-    // Translate Property to napi_property_descriptor.
-    napi_property_descriptor& d = descriptors[i];
-    d.utf8name = p->utf8name;
-    d.attributes = p->attributes;
-    d.data = p;
-    d.value = p->value;
-    using Type = internal::PropertyMethodType;
-    if (p->method)
-      d.method = InvokePropertyMethod<Type::Method>;
-    if (p->getter)
-      d.getter = InvokePropertyMethod<Type::Getter>;
-    if (p->setter)
-      d.setter = InvokePropertyMethod<Type::Setter>;
-  }
-  if (descriptors.size() == 0)
-    return true;
-  napi_status s = napi_define_properties(env, object, descriptors.size(),
-                                         &descriptors.front());
-  return s == napi_ok;
+// Convert a property to descriptor.
+inline napi_property_descriptor
+PropertyToDescriptor(napi_env env, napi_value object, Property prop) {
+  // Initialize members to 0.
+  napi_property_descriptor descriptor = {};
+  // Translate Property to napi_property_descriptor.
+  descriptor.utf8name = prop.utf8name;
+  descriptor.attributes = prop.attributes;
+  descriptor.value = prop.value;
+  using Type = internal::PropertyMethodType;
+  if (prop.method)
+    descriptor.method = internal::InvokePropertyMethod<Type::Method>;
+  if (prop.getter)
+    descriptor.getter = internal::InvokePropertyMethod<Type::Getter>;
+  if (prop.setter)
+    descriptor.setter = internal::InvokePropertyMethod<Type::Setter>;
+  // Attach the property holder to object.
+  auto holder = std::make_unique<Property>(std::move(prop));
+  descriptor.data = holder.get();
+  napi_status s = AddToFinalizer(env, object, std::move(holder));
+  if (s != napi_ok)
+    return {};
+  return descriptor;
 }
 
+}  // namespace internal
+
+// Define properties on an |object|.
 template<typename... ArgTypes>
-inline bool DefineProperties(napi_env env,
+inline void DefineProperties(napi_env env,
                              napi_value object,
                              ArgTypes... props) {
-  return DefineProperties(env, object, {props...});
+  std::vector<napi_property_descriptor> descriptors =
+      {internal::PropertyToDescriptor(env, object, std::move(props))...};
+  if (descriptors.size() == 0)
+    return;
+  napi_status s = napi_define_properties(env, object, descriptors.size(),
+                                         &descriptors.front());
+  assert(s == napi_ok);
 }
 
 }  // namespace nb
