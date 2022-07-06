@@ -21,6 +21,7 @@ napi_value Init(napi_env env, napi_value exports) {
   SetErrorMode(GetErrorMode() & ~SEM_NOGPFAULTERRORBOX);
 #endif
   TEST(callback);
+  TEST(property);
   TEST(prototype);
   TEST(types);
   return exports;

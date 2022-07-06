@@ -5,7 +5,7 @@
 #ifndef SRC_PROTOTYPE_INTERNAL_H_
 #define SRC_PROTOTYPE_INTERNAL_H_
 
-#include "src/callback.h"
+#include "src/property.h"
 #include "src/instance_data.h"
 
 namespace nb {
