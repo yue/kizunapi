@@ -1,6 +1,6 @@
 name: napi-bind
 
-on: push
+on: [push, pull_request]
 
 jobs:
   build:
@@ -10,9 +10,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        node-version: [14, 16, 18]
         os: [ubuntu-20.04, windows-2019, macos-11]
 
     steps:
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
       - name: Checkout
         uses: actions/checkout@v3
 
