@@ -40,7 +40,7 @@ struct CallbackParamTraits<const char*&> {
 // through DispatchToCallback, where it is invoked.
 template<typename Sig>
 struct CallbackHolder {
-  CallbackHolder(std::function<Sig> callback, int flags = 0)
+  explicit CallbackHolder(std::function<Sig> callback, int flags = 0)
       : callback(std::move(callback)), flags(flags) {}
   CallbackHolder(const CallbackHolder<Sig>&) = default;
   CallbackHolder(CallbackHolder<Sig>&&) = default;

@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <nbind.h>
 
 void run_types_tests(napi_env env, napi_value binding) {

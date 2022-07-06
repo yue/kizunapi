@@ -4,11 +4,11 @@
 #ifndef SRC_TYPES_H_
 #define SRC_TYPES_H_
 
-#include <vector>
-#include <string>
-
 #include <assert.h>
 #include <node_api.h>
+
+#include <vector>
+#include <string>
 
 #include "src/template_util.h"
 
@@ -163,7 +163,8 @@ struct Type<std::u16string> {
                               napi_value value,
                               std::u16string* out) {
     size_t length;
-    napi_status s = napi_get_value_string_utf16(env, value, nullptr, 0, &length);
+    napi_status s = napi_get_value_string_utf16(env, value, nullptr, 0,
+                                                &length);
     if (s != napi_ok)
       return s;
     if (length > 0) {

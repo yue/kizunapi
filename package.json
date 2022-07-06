@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "pretest": "node-gyp rebuild --debug -C test",
+    "lint": "cpplint --recursive --filter=-build/include_what_you_use src test",
     "test": "node test",
     "test:incremental": "node-gyp build --debug -C test && node test"
   },
@@ -34,7 +35,7 @@
     "node-addon-api"
   ],
   "devDependencies": {
-    "assert-simple-tap": "^3.0.0",
-    "node-gyp": "9.0.0"
+    "assert-simple-tap": "3.0.0",
+    "cpplint.js": "2.0.0"
   }
 }

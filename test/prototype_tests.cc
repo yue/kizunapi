@@ -1,4 +1,5 @@
-#include <memory>
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 #include <nbind.h>
 
@@ -12,7 +13,7 @@ class ClassWithConstructor {
 
 class ThrowInConstructor {
  public:
-  ThrowInConstructor(napi_env env) {
+  explicit ThrowInConstructor(napi_env env) {
     napi_throw_error(env, nullptr, "Throwed in constructor");
   }
 };
