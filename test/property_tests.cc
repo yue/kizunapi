@@ -37,12 +37,11 @@ struct Type<SimpleMember> {
   static void Finalize(void* ptr) {
     delete static_cast<SimpleMember*>(ptr);
   }
-  static PropertyList Prototype() {
-    return {
-      nb::Property("getter", nb::Getter(&SimpleMember::data)),
-      nb::Property("setter", nb::Setter(&SimpleMember::data)),
-      nb::Property("data", &SimpleMember::data),
-    };
+  static void Define(napi_env env, napi_value, napi_value prototype) {
+    DefineProperties(env, prototype,
+                     Property("getter", Getter(&SimpleMember::data)),
+                     Property("setter", Setter(&SimpleMember::data)),
+                     Property("data", &SimpleMember::data));
   }
 };
 

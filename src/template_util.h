@@ -17,13 +17,26 @@ namespace internal {
 // a C++14 defect.
 // ref: http://en.cppreference.com/w/cpp/types/void_t
 // ref: http://open-std.org/JTC1/SC22/WG21/docs/cwg_defects.html#1558
-template <typename...>
+template<typename...>
 struct make_void {
   using type = void;
 };
 
-template <typename... Ts>
+template<typename... Ts>
 using void_t = typename make_void<Ts...>::type;
+
+// Check if all the types are the same.
+template<template<typename, typename> class checker, typename... Ts>
+struct is_all : std::true_type {};
+
+template<template<typename, typename> class checker,
+         typename T0, typename T1, typename... Ts>
+struct is_all<checker, T0, T1, Ts...>
+    : std::integral_constant<
+          bool, checker<T0, T1>::value && is_all<checker, T0, Ts...>::value> {};
+
+template<typename... Ts>
+using is_all_same = is_all<std::is_same, Ts...>;
 
 // Classes for generating and storing an argument pack of integer indices
 // (based on well-known "indices trick", see: http://goo.gl/bKKojn):

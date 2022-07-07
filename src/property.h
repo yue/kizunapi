@@ -35,6 +35,9 @@ struct Property {
     SetProperty(std::move(args)...);
   }
 
+  Property(const Property&) = delete;
+  Property(Property&&) = default;
+
   const char* utf8name;
   napi_property_attributes attributes = napi_default;
   std::function<internal::NodeCallbackSig> method;
@@ -75,14 +78,14 @@ struct Property {
 
   template<typename Sig>
   void SetProperty(internal::PropertyMethodHolder<Sig, Type::Method>&& holder) {
-    method = WrapPropertyMethod(holder);
+    method = WrapPropertyMethod(std::move(holder));
     if (attributes == napi_default)
       attributes = napi_default_method;
   }
 
   template<typename Sig>
   void SetProperty(internal::PropertyMethodHolder<Sig, Type::Getter>&& holder) {
-    getter = WrapPropertyMethod(holder);
+    getter = WrapPropertyMethod(std::move(holder));
     if (attributes == napi_default)
       attributes = static_cast<napi_property_attributes>(napi_writable |
                                                          napi_enumerable);
@@ -90,7 +93,7 @@ struct Property {
 
   template<typename Sig>
   void SetProperty(internal::PropertyMethodHolder<Sig, Type::Setter>&& holder) {
-    setter = WrapPropertyMethod(holder);
+    setter = WrapPropertyMethod(std::move(holder));
     if (attributes == napi_default)
       attributes = static_cast<napi_property_attributes>(napi_writable |
                                                          napi_enumerable);
@@ -102,8 +105,6 @@ struct Property {
     SetProperty(std::move(args)...);
   }
 };
-
-using PropertyList = std::vector<Property>;
 
 // Alias Method(name, func) to Property(name, Method(func)).
 template<typename T>
@@ -153,24 +154,15 @@ inline napi_property_descriptor PropertyToDescriptor(
 }  // namespace internal
 
 // Define properties on an |object|.
-template<typename... ArgTypes>
+template<typename... ArgTypes,
+         typename = typename std::enable_if<
+             internal::is_all_same<ArgTypes..., Property>::value>::type>
 inline napi_status DefineProperties(napi_env env, napi_value object,
                                     ArgTypes... props) {
   if (sizeof...(props) == 0)
     return napi_ok;
   std::vector<napi_property_descriptor> desps =
       {internal::PropertyToDescriptor(env, object, std::move(props))...};
-  return napi_define_properties(env, object, desps.size(), &desps.front());
-}
-
-inline napi_status DefineProperties(napi_env env, napi_value object,
-                                    PropertyList props) {
-  if (props.empty())
-    return napi_ok;
-  std::vector<napi_property_descriptor> desps;
-  desps.reserve(props.size());
-  for (Property& p : props)
-    desps.push_back(internal::PropertyToDescriptor(env, object, std::move(p)));
   return napi_define_properties(env, object, desps.size(), &desps.front());
 }
 

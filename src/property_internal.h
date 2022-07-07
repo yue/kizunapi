@@ -30,7 +30,7 @@ struct PropertyMethodHolder : CallbackHolder<Sig> {
 // executed with arbitrary napi_callback_info.
 template<typename ReturnType, typename... ArgTypes, CallbackType type>
 inline std::function<NodeCallbackSig> WrapPropertyMethod(
-    PropertyMethodHolder<ReturnType(ArgTypes...), type> holder) {
+    PropertyMethodHolder<ReturnType(ArgTypes...), type>&& holder) {
   static_assert(type != CallbackType::Setter,
                 "Setter should not return value");
   return [holder = std::move(holder)](napi_env env, napi_callback_info info) {
@@ -45,7 +45,7 @@ inline std::function<NodeCallbackSig> WrapPropertyMethod(
 
 template<typename... ArgTypes, CallbackType type>
 inline std::function<NodeCallbackSig> WrapPropertyMethod(
-    PropertyMethodHolder<void(ArgTypes...), type> holder) {
+    PropertyMethodHolder<void(ArgTypes...), type>&& holder) {
   static_assert(type != CallbackType::Getter,
                 "Getter should return value");
   return [holder = std::move(holder)](napi_env env, napi_callback_info info) {

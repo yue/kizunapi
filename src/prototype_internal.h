@@ -36,19 +36,20 @@ inline napi_value DummyConstructor(napi_env env, napi_callback_info info) {
 // Receive property list from type and define its prototype.
 template<typename T, typename Enable = void>
 struct Prototype {
-  static inline napi_status Define(napi_env env, napi_value constructor) {
-    return napi_ok;
+  static inline bool Define(napi_env env, napi_value constructor) {
+    return true;
   }
 };
 
 template<typename T>
 struct Prototype<T, typename std::enable_if<is_function_pointer<
-                        decltype(&Type<T>::Prototype)>::value>::type> {
-  static inline napi_status Define(napi_env env, napi_value constructor) {
+                        decltype(&Type<T>::Define)>::value>::type> {
+  static inline bool Define(napi_env env, napi_value constructor) {
     napi_value prototype;
     if (!Get(env, constructor, "prototype", &prototype))
-      return napi_generic_failure;
-    return DefineProperties(env, prototype, Type<T>::Prototype());
+      return false;
+    Type<T>::Define(env, constructor, prototype);
+    return true;
   }
 };
 
@@ -65,9 +66,8 @@ struct DefineClass {
     // Note that we are not using napi_define_class to set prototype, because
     // it does not support inheritance, check issue below for background.
     // https://github.com/napi-rs/napi-rs/issues/1164
-    s = Prototype<T>::Define(env, constructor);
-    if (s != napi_ok)
-      return s;
+    if (!Prototype<T>::Define(env, constructor))
+      return napi_generic_failure;
     *result = constructor;
     return napi_ok;
   }
@@ -86,9 +86,8 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
                                       0, nullptr, &constructor);
     if (s != napi_ok)
       return s;
-    s = Prototype<T>::Define(env, constructor);
-    if (s != napi_ok)
-      return s;
+    if (!Prototype<T>::Define(env, constructor))
+      return napi_generic_failure;
     s = AddToFinalizer(env, constructor, std::move(holder));
     if (s != napi_ok)
       return s;

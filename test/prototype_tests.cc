@@ -109,8 +109,8 @@ struct Type<RefCounted> {
   static void Finalize(void* ptr) {
     static_cast<RefCounted*>(ptr)->Release();
   }
-  static PropertyList Prototype() {
-    return {Property("count", Getter(&RefCounted::Count))};
+  static void Define(napi_env env, napi_value, napi_value prototype) {
+    Set(env, prototype, "count", &RefCounted::Count);
   }
 };
 
@@ -123,8 +123,8 @@ struct Type<Parent> {
   static void Destructor(Parent* ptr) {
     delete ptr;
   }
-  static PropertyList Prototype() {
-    return {Property("parentMethod", Method(&Parent::ParentMethod))};
+  static void Define(napi_env env, napi_value, napi_value prototype) {
+    Set(env, prototype, "parentMethod", &Parent::ParentMethod);
   }
 };
 
@@ -138,8 +138,8 @@ struct Type<Child> {
   static void Destructor(Child* ptr) {
     delete ptr;
   }
-  static PropertyList Prototype() {
-    return {Property("childMethod", Method(&Child::ChildMethod))};
+  static void Define(napi_env env, napi_value, napi_value prototype) {
+    Set(env, prototype, "childMethod", &Child::ChildMethod);
   }
 };
 

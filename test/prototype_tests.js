@@ -31,11 +31,11 @@ exports.runTests = (assert, binding) => {
   const {passThroughRefCounted, refCounted, RefCounted} = binding
   assert.ok(refCounted instanceof RefCounted,
             'Prototype push pointer to js')
-  assert.equal(refCounted.count, 2,
+  assert.equal(refCounted.count(), 2,
                'Prototype call wrap when pushing pointer to js')
   assert.equal(passThroughRefCounted(refCounted), refCounted,
                'Prototype push pointer to native')
-  assert.equal(refCounted.count, 2,
+  assert.equal(refCounted.count(), 2,
                'Prototype wrap is only called once per object')
 
   const {pointerOfChild, pointerOfParent, Child, Parent} = binding
