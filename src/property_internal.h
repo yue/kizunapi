@@ -10,27 +10,28 @@ namespace nb {
 
 namespace internal {
 
-using NodeCallbackSig = napi_value(napi_env, napi_callback_info);
-
-// Add type tag for the CallbackHolder.
-enum class PropertyMethodType {
+// The type of the callback.
+enum class CallbackType {
   Method,
   Getter,
   Setter,
 };
 
-template<typename Sig, PropertyMethodType type>
+using NodeCallbackSig = napi_value(napi_env, napi_callback_info);
+
+// Extends CallbackHolder with information about callback type.
+template<typename Sig, CallbackType type>
 struct PropertyMethodHolder : CallbackHolder<Sig> {
-  explicit PropertyMethodHolder(CallbackHolder<Sig> holder)
-      : CallbackHolder<Sig>(std::move(holder)) {}
+  explicit PropertyMethodHolder(CallbackHolder<Sig>&& holder)
+      : CallbackHolder<Sig>(holder) {}
 };
 
 // Create a std::function<napi_callback> from the passed |holder|, that can be
 // executed with arbitrary napi_callback_info.
-template<typename ReturnType, typename... ArgTypes, PropertyMethodType type>
+template<typename ReturnType, typename... ArgTypes, CallbackType type>
 inline std::function<NodeCallbackSig> WrapPropertyMethod(
     PropertyMethodHolder<ReturnType(ArgTypes...), type> holder) {
-  static_assert(type != PropertyMethodType::Setter,
+  static_assert(type != CallbackType::Setter,
                 "Setter should not return value");
   return [holder = std::move(holder)](napi_env env, napi_callback_info info) {
     Arguments args(env, info);
@@ -42,10 +43,10 @@ inline std::function<NodeCallbackSig> WrapPropertyMethod(
   };
 }
 
-template<typename... ArgTypes, PropertyMethodType type>
+template<typename... ArgTypes, CallbackType type>
 inline std::function<NodeCallbackSig> WrapPropertyMethod(
     PropertyMethodHolder<void(ArgTypes...), type> holder) {
-  static_assert(type != PropertyMethodType::Getter,
+  static_assert(type != CallbackType::Getter,
                 "Getter should return value");
   return [holder = std::move(holder)](napi_env env, napi_callback_info info) {
     Arguments args(env, info);
@@ -57,12 +58,51 @@ inline std::function<NodeCallbackSig> WrapPropertyMethod(
   };
 }
 
-// Helper to create PropertyMethodHolder.
-template<typename T, PropertyMethodType type>
-inline auto CreatePropertyMethodHolder(T func) {
-  return PropertyMethodHolder<typename CallbackHolderFactory<T>::RunType, type>(
-      CallbackHolderFactory<T>::Create(std::move(func)));
-}
+// Extends CallbackHolderFactory to support member object pointers.
+template<typename T, CallbackType type, typename Enable = void>
+struct PropertyMethodHolderFactory {
+  using RunType = typename CallbackHolderFactory<T>::RunType;
+  using HolderT = PropertyMethodHolder<RunType, type>;
+  static inline HolderT Create(T func) {
+    return HolderT(CallbackHolderFactory<T>::Create(std::move(func)));
+  }
+};
+
+template<typename T>
+struct PropertyMethodHolderFactory<T, CallbackType::Getter,
+                                   typename std::enable_if<
+                                       std::is_member_object_pointer<
+                                           T>::value>::type> {
+  using ClassType = typename ExtractMemberPointer<T>::ClassType;
+  using MemberType = typename ExtractMemberPointer<T>::MemberType;
+  using RunType = MemberType(ClassType*);
+  using HolderT = PropertyMethodHolder<RunType, CallbackType::Getter>;
+  static inline HolderT Create(T member_ptr) {
+    std::function<RunType> func = [member_ptr](ClassType* p) {
+      return p->*member_ptr;
+    };
+    return HolderT(CallbackHolderFactory<decltype(func)>::Create(
+        std::move(func), HolderIsFirstArgument));
+  }
+};
+
+template<typename T>
+struct PropertyMethodHolderFactory<T, CallbackType::Setter,
+                                   typename std::enable_if<
+                                       std::is_member_object_pointer<
+                                           T>::value>::type> {
+  using ClassType = typename ExtractMemberPointer<T>::ClassType;
+  using MemberType = typename ExtractMemberPointer<T>::MemberType;
+  using RunType = void(ClassType*, MemberType);
+  using HolderT = PropertyMethodHolder<RunType, CallbackType::Setter>;
+  static inline HolderT Create(T member_ptr) {
+    std::function<RunType> func = [member_ptr](ClassType* p, MemberType m) {
+      p->*member_ptr = std::move(m);
+    };
+    return HolderT(CallbackHolderFactory<decltype(func)>::Create(
+        std::move(func), HolderIsFirstArgument));
+  }
+};
 
 }  // namespace internal
 

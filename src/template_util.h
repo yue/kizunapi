@@ -1,4 +1,5 @@
 // Copyright (c) Microsoft Corporation.
+// Copyright (c) The Chromium Authors.
 // Licensed under the MIT License.
 
 #ifndef SRC_TEMPLATE_UTIL_H_
@@ -47,6 +48,14 @@ struct is_function_pointer
           bool,
           std::is_pointer<Fun>::value &&
           std::is_function<typename std::remove_pointer<Fun>::type>::value> {};
+
+// Get type from member pointer.
+template<typename T> struct ExtractMemberPointer;
+template<typename TType, typename TMember>
+struct ExtractMemberPointer<TMember(TType::*)> {
+  using ClassType = TType;
+  using MemberType = TMember;
+};
 
 // Evaluated to RunType of the given callable type.
 // Example:

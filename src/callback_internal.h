@@ -1,4 +1,5 @@
 // Copyright (c) Microsoft Corporation.
+// Copyright (c) The Chromium Authors.
 // Licensed under the MIT License.
 
 #ifndef SRC_CALLBACK_INTERNAL_H_
@@ -11,10 +12,6 @@
 #include "src/persistent.h"
 
 namespace nb {
-
-enum CreateFunctionTemplateFlags {
-  HolderIsFirstArgument = 1 << 0,
-};
 
 namespace internal {
 
@@ -36,6 +33,20 @@ struct CallbackParamTraits<const char*&> {
   using LocalType = const char*;
 };
 
+// Flag to indicate the |this| object should be passed as first argument.
+enum CreateFunctionTemplateFlags {
+  HolderIsFirstArgument = 1 << 0,
+};
+
+// The supported function types for convertion.
+template<typename T, typename Enable = void>
+struct IsFunctionConvertionSupported
+    : std::integral_constant<
+          bool,
+          is_function_pointer<T>::value ||
+          std::is_function<T>::value ||
+          std::is_member_function_pointer<T>::value> {};
+
 // CallbackHolder is used to pass a std::function from CreateFunctionTemplate
 // through DispatchToCallback, where it is invoked.
 template<typename Sig>
@@ -50,9 +61,8 @@ struct CallbackHolder {
 };
 
 template<typename T>
-bool GetNextArgument(Arguments* args, int create_flags, bool is_first,
-                     T* result) {
-  if (is_first && (create_flags & HolderIsFirstArgument) != 0) {
+bool GetNextArgument(Arguments* args, int flags, bool is_first, T* result) {
+  if (is_first && (flags & HolderIsFirstArgument) != 0) {
     return args->GetThis(result);
   } else {
     return args->GetNext(result);
@@ -61,19 +71,19 @@ bool GetNextArgument(Arguments* args, int create_flags, bool is_first,
 
 // For advanced use cases, we allow callers to request the unparsed Arguments
 // object and poke around in it directly.
-inline bool GetNextArgument(Arguments* args, int create_flags, bool is_first,
+inline bool GetNextArgument(Arguments* args, int flags, bool is_first,
                             Arguments* result) {
   *result = *args;
   return true;
 }
-inline bool GetNextArgument(Arguments* args, int create_flags, bool is_first,
+inline bool GetNextArgument(Arguments* args, int flags, bool is_first,
                             Arguments** result) {
   *result = args;
   return true;
 }
 
 // It's common for clients to just need the env, so we make that easy.
-inline bool GetNextArgument(Arguments* args, int create_flags, bool is_first,
+inline bool GetNextArgument(Arguments* args, int flags, bool is_first,
                             napi_env* result) {
   *result = args->Env();
   return true;
@@ -88,8 +98,8 @@ struct ArgumentHolder {
   ArgLocalType value;
   bool ok;
 
-  ArgumentHolder(Arguments* args, int create_flags)
-      : ok(GetNextArgument(args, create_flags, index == 0, &value)) {
+  ArgumentHolder(Arguments* args, int flags)
+      : ok(GetNextArgument(args, flags, index == 0, &value)) {
     if (!ok)
       args->ThrowError(Type<ArgLocalType>::name);
   }
@@ -147,7 +157,6 @@ class HandleScope {
   napi_handle_scope scope_;
 };
 
-
 // Create CallbackHolder for function pointers.
 template<typename T, typename Enable = void>
 struct CallbackHolderFactory {};
@@ -156,8 +165,8 @@ template<typename Sig>
 struct CallbackHolderFactory<std::function<Sig>> {
   using RunType = Sig;
   using HolderT = CallbackHolder<Sig>;
-  static inline CallbackHolder<Sig> Create(std::function<Sig> func) {
-    return CallbackHolder<Sig>(std::move(func));
+  static inline HolderT Create(std::function<Sig> func, int flags = 0) {
+    return HolderT(std::move(func), flags);
   }
 };
 
@@ -166,8 +175,8 @@ struct CallbackHolderFactory<T, typename std::enable_if<
                                     is_function_pointer<T>::value>::type> {
   using RunType = typename FunctorTraits<T>::RunType;
   using HolderT = CallbackHolder<RunType>;
-  static inline HolderT Create(T func) {
-    return HolderT{std::function<RunType>(func)};
+  static inline HolderT Create(T func, int flags = 0) {
+    return HolderT{std::function<RunType>(func), flags};
   }
 };
 
@@ -195,14 +204,8 @@ class Invoker<IndicesHolder<indices...>, ArgTypes...>
   // C++ has always been strict about the class initialization order,
   // so it is guaranteed ArgumentHolders will be initialized (and thus, will
   // extract arguments from Arguments) in the right order.
-  Invoker(Arguments* args, int create_flags = 0)
-      : ArgumentHolder<indices, ArgTypes>(args, create_flags)..., args_(args) {
-    // GCC thinks that create_flags is going unused, even though the
-    // expansion above clearly makes use of it. Per jyasskin@, casting
-    // to void is the commonly accepted way to convince the compiler
-    // that you're actually using a parameter/varible.
-    (void)create_flags;
-  }
+  Invoker(Arguments* args, int flags = 0)
+      : ArgumentHolder<indices, ArgTypes>(args, flags)..., args_(args) {}
 
   bool IsOK() {
     return And(ArgumentHolder<indices, ArgTypes>::ok...);

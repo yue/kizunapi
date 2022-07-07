@@ -10,25 +10,25 @@ namespace nb {
 
 template<typename T>
 inline auto Method(T func) {
-  return internal::CreatePropertyMethodHolder<
-             T, internal::PropertyMethodType::Method>(func);
+  return internal::PropertyMethodHolderFactory<
+             T, internal::CallbackType::Method>::Create(func);
 }
 
 template<typename T>
 inline auto Getter(T func) {
-  return internal::CreatePropertyMethodHolder<
-             T, internal::PropertyMethodType::Getter>(func);
+  return internal::PropertyMethodHolderFactory<
+             T, internal::CallbackType::Getter>::Create(func);
 }
 
 template<typename T>
 inline auto Setter(T func) {
-  return internal::CreatePropertyMethodHolder<
-             T, internal::PropertyMethodType::Setter>(func);
+  return internal::PropertyMethodHolderFactory<
+             T, internal::CallbackType::Setter>::Create(func);
 }
 
 // Defines a JS property with native methods.
 struct Property {
-  using Type = internal::PropertyMethodType;
+  using Type = internal::CallbackType;
 
   template<typename... ArgTypes>
   Property(const char* name, ArgTypes... args) : utf8name(name) {
@@ -58,24 +58,39 @@ struct Property {
       attributes = napi_default_jsproperty;
   }
 
+  // Treat raw functions as methods.
+  template<typename T>
+  typename std::enable_if<
+      internal::IsFunctionConvertionSupported<T>::value>::type
+  SetProperty(T func) {
+    return SetProperty(Method(func));
+  }
+
+  // Treat raw member object pointer as getter and setter.
+  template<typename T>
+  typename std::enable_if<std::is_member_object_pointer<T>::value>::type
+  SetProperty(T ptr) {
+    return SetProperty(Getter(ptr), Setter(ptr));
+  }
+
   template<typename Sig>
-  void SetProperty(internal::PropertyMethodHolder<Sig, Type::Method> holder) {
-    method = WrapPropertyMethod(std::move(holder));
+  void SetProperty(internal::PropertyMethodHolder<Sig, Type::Method>&& holder) {
+    method = WrapPropertyMethod(holder);
     if (attributes == napi_default)
       attributes = napi_default_method;
   }
 
   template<typename Sig>
-  void SetProperty(internal::PropertyMethodHolder<Sig, Type::Getter> holder) {
-    getter = WrapPropertyMethod(std::move(holder));
+  void SetProperty(internal::PropertyMethodHolder<Sig, Type::Getter>&& holder) {
+    getter = WrapPropertyMethod(holder);
     if (attributes == napi_default)
       attributes = static_cast<napi_property_attributes>(napi_writable |
                                                          napi_enumerable);
   }
 
   template<typename Sig>
-  void SetProperty(internal::PropertyMethodHolder<Sig, Type::Setter> holder) {
-    setter = WrapPropertyMethod(std::move(holder));
+  void SetProperty(internal::PropertyMethodHolder<Sig, Type::Setter>&& holder) {
+    setter = WrapPropertyMethod(holder);
     if (attributes == napi_default)
       attributes = static_cast<napi_property_attributes>(napi_writable |
                                                          napi_enumerable);
@@ -90,18 +105,24 @@ struct Property {
 
 using PropertyList = std::vector<Property>;
 
+// Alias Method(name, func) to Property(name, Method(func)).
+template<typename T>
+inline Property Method(const char* name, T func) {
+  return Property(name, Method(func));
+}
+
 namespace internal {
 
 // Invoke a property method.
-template<PropertyMethodType type>
+template<CallbackType type>
 napi_value InvokePropertyMethod(napi_env env, napi_callback_info info) {
   Arguments args(env, info);
   Property* property = static_cast<Property*>(args.Data());
-  if (type == PropertyMethodType::Method)
+  if (type == CallbackType::Method)
     return property->method(env, info);
-  if (type == PropertyMethodType::Getter)
+  if (type == CallbackType::Getter)
     return property->getter(env, info);
-  if (type == PropertyMethodType::Setter)
+  if (type == CallbackType::Setter)
     return property->setter(env, info);
 }
 
@@ -115,11 +136,11 @@ inline napi_property_descriptor PropertyToDescriptor(
   descriptor.attributes = prop.attributes;
   descriptor.value = prop.value;
   if (prop.method)
-    descriptor.method = InvokePropertyMethod<PropertyMethodType::Method>;
+    descriptor.method = InvokePropertyMethod<CallbackType::Method>;
   if (prop.getter)
-    descriptor.getter = InvokePropertyMethod<PropertyMethodType::Getter>;
+    descriptor.getter = InvokePropertyMethod<CallbackType::Getter>;
   if (prop.setter)
-    descriptor.setter = InvokePropertyMethod<PropertyMethodType::Setter>;
+    descriptor.setter = InvokePropertyMethod<CallbackType::Setter>;
   // Attach the property holder to object.
   auto holder = std::make_unique<Property>(std::move(prop));
   descriptor.data = holder.get();

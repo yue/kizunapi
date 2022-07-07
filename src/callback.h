@@ -40,20 +40,9 @@ struct Type<std::function<ReturnType(ArgTypes...)>> {
   }
 };
 
-// Specialize for native functions.
 template<typename T>
 struct Type<T, typename std::enable_if<
-                   internal::is_function_pointer<T>::value>::type> {
-  static constexpr const char* name = "Function";
-  static inline napi_status ToNode(napi_env env, T value, napi_value* result) {
-    return internal::CreateNodeFunction(env, value, result);
-  }
-};
-
-// Specialize for member function.
-template<typename T>
-struct Type<T, typename std::enable_if<
-                   std::is_member_function_pointer<T>::value>::type> {
+                   internal::IsFunctionConvertionSupported<T>::value>::type> {
   static constexpr const char* name = "Function";
   static inline napi_status ToNode(napi_env env, T value, napi_value* result) {
     return internal::CreateNodeFunction(env, value, result);
