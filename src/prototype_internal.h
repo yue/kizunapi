@@ -33,13 +33,43 @@ inline napi_value DummyConstructor(napi_env env, napi_callback_info info) {
   return nullptr;
 }
 
+// Receive property list from type and define its prototype.
+template<typename T, typename Enable = void>
+struct Prototype {
+  static inline napi_status Define(napi_env env, napi_value constructor) {
+    return napi_ok;
+  }
+};
+
+template<typename T>
+struct Prototype<T, typename std::enable_if<is_function_pointer<
+                        decltype(&Type<T>::Prototype)>::value>::type> {
+  static inline napi_status Define(napi_env env, napi_value constructor) {
+    napi_value prototype;
+    if (!Get(env, constructor, "prototype", &prototype))
+      return napi_generic_failure;
+    return DefineProperties(env, prototype, Type<T>::Prototype());
+  }
+};
+
 // Define T's constructor according to its type traits.
 template<typename T, typename Enable = void>
 struct DefineClass {
-  static napi_status Do(napi_env env, napi_value* prototype) {
-    return napi_define_class(env, Type<T>::name, NAPI_AUTO_LENGTH,
-                             &DummyConstructor, nullptr, 0, nullptr,
-                             prototype);
+  static napi_status Do(napi_env env, napi_value* result) {
+    napi_value constructor;
+    napi_status s = napi_define_class(env, Type<T>::name, NAPI_AUTO_LENGTH,
+                                      &DummyConstructor, nullptr, 0, nullptr,
+                                      &constructor);
+    if (s != napi_ok)
+      return s;
+    // Note that we are not using napi_define_class to set prototype, because
+    // it does not support inheritance, check issue below for background.
+    // https://github.com/napi-rs/napi-rs/issues/1164
+    s = Prototype<T>::Define(env, constructor);
+    if (s != napi_ok)
+      return s;
+    *result = constructor;
+    return napi_ok;
   }
 };
 
@@ -48,18 +78,21 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
                            decltype(&Type<T>::Constructor)>::value>::type> {
   using Sig = typename FunctorTraits<decltype(&Type<T>::Constructor)>::RunType;
   using HolderT = CallbackHolder<Sig>;
-  static napi_status Do(napi_env env, napi_value* prototype) {
+  static napi_status Do(napi_env env, napi_value* result) {
     auto holder = std::make_unique<HolderT>(&Type<T>::Constructor);
-    napi_value result;
-    napi_status s = napi_define_class(
-        env, Type<T>::name, NAPI_AUTO_LENGTH, &DispatchToCallback,
-        holder.get(), 0, nullptr, &result);
+    napi_value constructor;
+    napi_status s = napi_define_class(env, Type<T>::name, NAPI_AUTO_LENGTH,
+                                      &DispatchToCallback, holder.get(),
+                                      0, nullptr, &constructor);
     if (s != napi_ok)
       return s;
-    s = AddToFinalizer(env, result, std::move(holder));
+    s = Prototype<T>::Define(env, constructor);
     if (s != napi_ok)
       return s;
-    *prototype = result;
+    s = AddToFinalizer(env, constructor, std::move(holder));
+    if (s != napi_ok)
+      return s;
+    *result = constructor;
     return napi_ok;
   }
   static napi_value DispatchToCallback(napi_env env, napi_callback_info info) {

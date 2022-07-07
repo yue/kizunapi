@@ -34,7 +34,9 @@ class RefCounted {
       delete this;
   }
 
-  int count() const { return count_; }
+  int Count() const {
+    return count_;
+  }
 
  private:
   ~RefCounted() = default;
@@ -43,9 +45,17 @@ class RefCounted {
 };
 
 class Parent {
+ public:
+  int ParentMethod() {
+    return 89;
+  }
 };
 
 class Child : public Parent {
+ public:
+  int ChildMethod() {
+    return 64;
+  }
 };
 
 template<typename T>
@@ -99,6 +109,9 @@ struct Type<RefCounted> {
   static void Finalize(void* ptr) {
     static_cast<RefCounted*>(ptr)->Release();
   }
+  static PropertyList Prototype() {
+    return {Property("count", Getter(&RefCounted::Count))};
+  }
 };
 
 template<>
@@ -109,6 +122,9 @@ struct Type<Parent> {
   }
   static void Destructor(Parent* ptr) {
     delete ptr;
+  }
+  static PropertyList Prototype() {
+    return {Property("parentMethod", Method(&Parent::ParentMethod))};
   }
 };
 
@@ -121,6 +137,9 @@ struct Type<Child> {
   }
   static void Destructor(Child* ptr) {
     delete ptr;
+  }
+  static PropertyList Prototype() {
+    return {Property("childMethod", Method(&Child::ChildMethod))};
   }
 };
 

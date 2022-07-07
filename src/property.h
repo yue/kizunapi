@@ -4,8 +4,6 @@
 #ifndef SRC_PROPERTY_H_
 #define SRC_PROPERTY_H_
 
-#include <initializer_list>
-
 #include "src/property_internal.h"
 
 namespace nb {
@@ -108,21 +106,20 @@ napi_value InvokePropertyMethod(napi_env env, napi_callback_info info) {
 }
 
 // Convert a property to descriptor.
-inline napi_property_descriptor
-PropertyToDescriptor(napi_env env, napi_value object, Property prop) {
+inline napi_property_descriptor PropertyToDescriptor(
+    napi_env env, napi_value object, Property prop) {
   // Initialize members to 0.
   napi_property_descriptor descriptor = {};
   // Translate Property to napi_property_descriptor.
   descriptor.utf8name = prop.utf8name;
   descriptor.attributes = prop.attributes;
   descriptor.value = prop.value;
-  using Type = internal::PropertyMethodType;
   if (prop.method)
-    descriptor.method = internal::InvokePropertyMethod<Type::Method>;
+    descriptor.method = InvokePropertyMethod<PropertyMethodType::Method>;
   if (prop.getter)
-    descriptor.getter = internal::InvokePropertyMethod<Type::Getter>;
+    descriptor.getter = InvokePropertyMethod<PropertyMethodType::Getter>;
   if (prop.setter)
-    descriptor.setter = internal::InvokePropertyMethod<Type::Setter>;
+    descriptor.setter = InvokePropertyMethod<PropertyMethodType::Setter>;
   // Attach the property holder to object.
   auto holder = std::make_unique<Property>(std::move(prop));
   descriptor.data = holder.get();
@@ -136,16 +133,24 @@ PropertyToDescriptor(napi_env env, napi_value object, Property prop) {
 
 // Define properties on an |object|.
 template<typename... ArgTypes>
-inline void DefineProperties(napi_env env,
-                             napi_value object,
-                             ArgTypes... props) {
-  std::vector<napi_property_descriptor> descriptors =
+inline napi_status DefineProperties(napi_env env, napi_value object,
+                                    ArgTypes... props) {
+  if (sizeof...(props) == 0)
+    return napi_ok;
+  std::vector<napi_property_descriptor> desps =
       {internal::PropertyToDescriptor(env, object, std::move(props))...};
-  if (descriptors.size() == 0)
-    return;
-  napi_status s = napi_define_properties(env, object, descriptors.size(),
-                                         &descriptors.front());
-  assert(s == napi_ok);
+  return napi_define_properties(env, object, desps.size(), &desps.front());
+}
+
+inline napi_status DefineProperties(napi_env env, napi_value object,
+                                    PropertyList props) {
+  if (props.empty())
+    return napi_ok;
+  std::vector<napi_property_descriptor> desps;
+  desps.reserve(props.size());
+  for (Property& p : props)
+    desps.push_back(internal::PropertyToDescriptor(env, object, std::move(p)));
+  return napi_define_properties(env, object, desps.size(), &desps.front());
 }
 
 }  // namespace nb

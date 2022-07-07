@@ -4,7 +4,7 @@
 #ifndef SRC_PROPERTY_INTERNAL_H_
 #define SRC_PROPERTY_INTERNAL_H_
 
-#include "src/callback.h"
+#include "src/callback_internal.h"
 
 namespace nb {
 
