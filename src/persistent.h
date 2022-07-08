@@ -12,9 +12,18 @@ namespace nb {
 // RAII managed persistent handle.
 class Persistent {
  public:
-  Persistent(napi_env env, napi_value value) : env_(env) {
-    napi_status s = napi_create_reference(env, value, 1, &ref_);
+  Persistent(napi_env env, napi_value value, uint32_t ref_count = 1)
+      : env_(env), is_weak_(ref_count == 0) {
+    napi_status s = napi_create_reference(env, value, ref_count, &ref_);
     assert(s == napi_ok);
+  }
+
+  Persistent(const Persistent& other) {
+    *this = other;
+  }
+
+  Persistent(Persistent&& other) {
+    *this = std::move(other);
   }
 
   ~Persistent() {
@@ -22,21 +31,30 @@ class Persistent {
   }
 
   Persistent& operator=(const Persistent& other) {
-    if (this != &other)
-      Copy(other);
+    if (this != &other) {
+      Destroy();
+      env_ = other.env_;
+      is_weak_ = other.is_weak_;
+      if (is_weak_) {
+        ref_ = WeakRefFromRef(env_, other.ref_);
+      } else {
+        ref_ = other.ref_;
+        napi_status s = napi_reference_ref(env_, ref_, nullptr);
+        assert(s == napi_ok);
+      }
+    }
     return *this;
   }
 
-  Persistent(const Persistent& other) {
-    Copy(other);
-  }
-
-  Persistent(Persistent&& other) {
-    Destroy();
-    env_ = other.env_;
-    ref_ = other.ref_;
-    is_weak_ = other.is_weak_;
-    other.ref_ = nullptr;
+  Persistent& operator=(Persistent&& other) {
+    if (this != &other) {
+      Destroy();
+      env_ = other.env_;
+      ref_ = other.ref_;
+      is_weak_ = other.is_weak_;
+      other.ref_ = nullptr;
+    }
+    return *this;
   }
 
   napi_value Get() const {
@@ -49,11 +67,13 @@ class Persistent {
   void MakeWeak() {
     if (is_weak_ || !ref_)
       return;
-    is_weak_ = true;
     // If this is the only ref then a unref can make it weak.
-    if (Unref() == 0)
+    if (Unref() == 0) {
+      is_weak_ = true;
       return;
+    }
     // Otherwise there are other refs and we must create a new ref.
+    is_weak_ = true;
     ref_ = WeakRefFromRef(env_, ref_);
   }
 
@@ -74,19 +94,6 @@ class Persistent {
     }
   }
 
-  void Copy(const Persistent& other) {
-    Destroy();
-    env_ = other.env_;
-    is_weak_ = other.is_weak_;
-    if (is_weak_) {
-      ref_ = WeakRefFromRef(env_, other.ref_);
-    } else {
-      ref_ = other.ref_;
-      napi_status s = napi_reference_ref(env_, ref_, nullptr);
-      assert(s == napi_ok);
-    }
-  }
-
   static napi_ref WeakRefFromRef(napi_env env, napi_ref ref) {
     napi_value value = nullptr;
     napi_status s = napi_get_reference_value(env, ref, &value);
@@ -97,7 +104,7 @@ class Persistent {
     return weak;
   }
 
-  napi_env env_;
+  napi_env env_ = nullptr;
   napi_ref ref_ = nullptr;
   bool is_weak_ = false;
 };

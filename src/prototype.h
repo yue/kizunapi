@@ -32,7 +32,7 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value>::type> {
   static inline napi_status ToNode(napi_env env, T* ptr, napi_value* result) {
     // Check if there is already a JS object created.
     InstanceData* instance_data = InstanceData::Get(env);
-    if (instance_data->Get(ptr, result))
+    if (instance_data->GetWeakRef(ptr, result))
       return napi_ok;
     // Pass an External to indicate it is called from native code.
     napi_value external;
@@ -49,7 +49,7 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value>::type> {
     // Wrap the |ptr| into JS object.
     void* data = Type<T>::Wrap(ptr);
     s = napi_wrap(env, object, data, [](napi_env env, void* data, void* ptr) {
-      InstanceData::Get(env)->Remove(ptr);
+      InstanceData::Get(env)->RemoveWeakRef(ptr);
       Type<T>::Finalize(data);
     }, ptr, nullptr);
     if (s != napi_ok) {
@@ -58,7 +58,7 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value>::type> {
     }
     *result = object;
     // Save weak reference.
-    instance_data->Set(ptr, object).MakeWeak();
+    instance_data->AddWeakRef(ptr, object);
     return napi_ok;
   }
   static inline napi_status FromNode(napi_env env, napi_value value, T** out) {

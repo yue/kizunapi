@@ -39,7 +39,8 @@ inline std::function<NodeCallbackSig> WrapPropertyMethod(
     Invoker<Indices, ArgTypes...> invoker(&args, holder.flags);
     if (!invoker.IsOK())
       return static_cast<napi_value>(nullptr);
-    return ToNode(env, invoker.DispatchToCallback(holder.callback));
+    ReturnType ret = invoker.DispatchToCallback(holder.callback);
+    return ToNode(env, ret);
   };
 }
 

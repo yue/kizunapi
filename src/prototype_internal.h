@@ -112,7 +112,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     // Then wrap the native pointer.
     napi_status s = napi_wrap(env, args.GetThis(), ptr,
                               [](napi_env env, void* ptr, void*) {
-      InstanceData::Get(env)->Remove(ptr);
+      InstanceData::Get(env)->RemoveWeakRef(ptr);
       Type<T>::Destructor(static_cast<T*>(ptr));
     }, nullptr, nullptr);
     if (s != napi_ok) {
@@ -120,7 +120,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
       napi_throw_error(env, nullptr, "Unable to wrap native object.");
     }
     // Save weak reference.
-    InstanceData::Get(env)->Set(ptr, args.GetThis()).MakeWeak();
+    InstanceData::Get(env)->AddWeakRef(ptr, args.GetThis());
     return nullptr;
   }
 };

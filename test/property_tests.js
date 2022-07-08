@@ -1,4 +1,6 @@
-exports.runTests = (assert, binding) => {
+const {gcUntil} = require('./util')
+
+exports.runTests = async (assert, binding) => {
   assert.equal(binding.value, 'value',
                'Property value')
   delete binding.value
@@ -27,4 +29,17 @@ exports.runTests = (assert, binding) => {
   member.data = 8964
   assert.equal(member.data, 8964,
                'Property member data pointer to getter and setter')
+
+  const {HasObjectMember} = binding
+  const has = new HasObjectMember
+  assert.equal(has.member.data, 89,
+               'Property object pointer property to js')
+  has.member = member
+  assert.equal(has.member.data, 8964,
+               'Property change object pointer property')
+
+  const life = new HasObjectMember
+  life.member.customData = 123
+  await gcUntil(() => life.member.customData === undefined)
+  assert.ok(true, 'Property JS wrapper of property gets GCed')
 }

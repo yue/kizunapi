@@ -19,9 +19,12 @@ void Setter(int n) {
   number = n + 1;
 }
 
-class SimpleMember {
- public:
+struct SimpleMember {
   int data = 89;
+};
+
+struct HasObjectMember {
+  SimpleMember* member = new SimpleMember;
 };
 
 }  // namespace
@@ -35,13 +38,27 @@ struct Type<SimpleMember> {
     return ptr;
   }
   static void Finalize(void* ptr) {
-    delete static_cast<SimpleMember*>(ptr);
   }
   static void Define(napi_env env, napi_value, napi_value prototype) {
     DefineProperties(env, prototype,
                      Property("getter", Getter(&SimpleMember::data)),
                      Property("setter", Setter(&SimpleMember::data)),
                      Property("data", &SimpleMember::data));
+  }
+};
+
+template<>
+struct Type<HasObjectMember> {
+  static constexpr const char* name = "HasObjectMember";
+  static HasObjectMember* Constructor() {
+    return new HasObjectMember;
+  }
+  static void Destructor(HasObjectMember* ptr) {
+    delete ptr;
+  }
+  static void Define(napi_env env, napi_value, napi_value prototype) {
+    DefineProperties(env, prototype,
+                     Property("member", &HasObjectMember::member));
   }
 };
 
@@ -55,5 +72,7 @@ void run_property_tests(napi_env env, napi_value binding) {
       nb::Property("method3", nb::Method(&Function)),
       nb::Property("value", nb::ToNode(env, "value")),
       nb::Property("number", nb::Getter(&Getter), nb::Setter(&Setter)));
-  nb::Set(env, binding, "member", new SimpleMember);
+  nb::Set(env, binding,
+          "member", new SimpleMember,
+          "HasObjectMember", nb::Constructor<HasObjectMember>());
 }
