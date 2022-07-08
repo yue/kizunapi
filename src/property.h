@@ -4,6 +4,7 @@
 #ifndef SRC_PROPERTY_H_
 #define SRC_PROPERTY_H_
 
+#include "src/instance_data.h"
 #include "src/property_internal.h"
 
 namespace nb {
@@ -30,35 +31,71 @@ inline auto Setter(T func) {
 struct Property {
   using Type = internal::CallbackType;
 
+  enum class CacheMode {
+    Default,
+    NoCache,
+    Getter,
+    GetterAndSetter,
+  };
+
   template<typename... ArgTypes>
-  Property(const char* name, ArgTypes... args) : utf8name(name) {
+  Property(std::string name, ArgTypes... args) : name(std::move(name)) {
     SetProperty(std::move(args)...);
+    if (cache_mode == CacheMode::Default)
+      cache_mode = CacheMode::NoCache;
+    if (attributes == napi_static) {
+      if (value) {
+        attributes = napi_default_jsproperty;
+        assert(!method && !getter && !setter);
+      } else if (method) {
+        attributes = napi_default_method;
+        assert(!value && !getter && !setter);
+      } else if (getter && setter) {
+        attributes = static_cast<napi_property_attributes>(napi_writable |
+                                                           napi_enumerable);
+        assert(!value && !method);
+      } else if (getter) {
+        attributes = napi_enumerable;
+        assert(!value && !method);
+      } else if (setter) {
+        attributes = napi_writable;
+        assert(!value && !method);
+      } else {
+        assert(false);
+      }
+    }
   }
 
   Property(const Property&) = delete;
   Property(Property&&) = default;
 
-  const char* utf8name;
-  napi_property_attributes attributes = napi_default;
+  std::string name;
   std::function<internal::NodeCallbackSig> method;
   std::function<internal::NodeCallbackSig> getter;
   std::function<internal::NodeCallbackSig> setter;
   napi_value value = nullptr;
+  CacheMode cache_mode = CacheMode::Default;
+
+  // We don't accept napi_static so use it as null.
+  napi_property_attributes attributes = napi_static;
 
  private:
   // Helper to set Property members in arbitrary order.
   void SetProperty(napi_property_attributes attr) {
+    assert(!(attr & napi_static));
     attributes = attr;
   }
 
   void SetProperty(int attr) {
-    attributes = static_cast<napi_property_attributes>(attr);
+    SetProperty(static_cast<napi_property_attributes>(attr));
+  }
+
+  void SetProperty(CacheMode m) {
+    cache_mode = m;
   }
 
   void SetProperty(napi_value v) {
     value = v;
-    if (attributes == napi_default)
-      attributes = napi_default_jsproperty;
   }
 
   // Treat raw functions as methods.
@@ -73,30 +110,22 @@ struct Property {
   template<typename T>
   typename std::enable_if<std::is_member_object_pointer<T>::value>::type
   SetProperty(T ptr) {
-    return SetProperty(Getter(ptr), Setter(ptr));
+    SetProperty(Getter(ptr), Setter(ptr));
   }
 
   template<typename Sig>
   void SetProperty(internal::PropertyMethodHolder<Sig, Type::Method>&& holder) {
     method = WrapPropertyMethod(std::move(holder));
-    if (attributes == napi_default)
-      attributes = napi_default_method;
   }
 
   template<typename Sig>
   void SetProperty(internal::PropertyMethodHolder<Sig, Type::Getter>&& holder) {
     getter = WrapPropertyMethod(std::move(holder));
-    if (attributes == napi_default)
-      attributes = static_cast<napi_property_attributes>(napi_writable |
-                                                         napi_enumerable);
   }
 
   template<typename Sig>
   void SetProperty(internal::PropertyMethodHolder<Sig, Type::Setter>&& holder) {
     setter = WrapPropertyMethod(std::move(holder));
-    if (attributes == napi_default)
-      attributes = static_cast<napi_property_attributes>(napi_writable |
-                                                         napi_enumerable);
   }
 
   template<typename T, typename... ArgTypes>
@@ -108,8 +137,8 @@ struct Property {
 
 // Alias Method(name, func) to Property(name, Method(func)).
 template<typename T>
-inline Property Method(const char* name, T func) {
-  return Property(name, Method(func));
+inline Property Method(std::string name, T func) {
+  return Property(std::move(name), Method(std::move(func)));
 }
 
 namespace internal {
@@ -121,10 +150,27 @@ napi_value InvokePropertyMethod(napi_env env, napi_callback_info info) {
   Property* property = static_cast<Property*>(args.Data());
   if (type == CallbackType::Method)
     return property->method(env, info);
-  if (type == CallbackType::Getter)
-    return property->getter(env, info);
-  if (type == CallbackType::Setter)
-    return property->setter(env, info);
+  // Getters and setters have cache policy.
+  napi_value table, result;
+  // Check if there is cached result.
+  if (property->cache_mode == Property::CacheMode::Getter ||
+      property->cache_mode == Property::CacheMode::GetterAndSetter) {
+    table = InstanceData::Get(env)->GetAttachedTable(args.GetThis());
+    if (Get(env, table, property->name, &result))
+      return result;
+  }
+  if (type == CallbackType::Getter) {
+    result = property->getter(env, info);
+    if (property->cache_mode == Property::CacheMode::Getter ||
+        property->cache_mode == Property::CacheMode::GetterAndSetter)
+      Set(env, table, property->name, result);
+  } else if (type == CallbackType::Setter) {
+    result = property->setter(env, info);
+    if (args.Length() > 0 &&
+        property->cache_mode == Property::CacheMode::GetterAndSetter)
+      Set(env, table, property->name, args[0]);
+  }
+  return result;
 }
 
 // Convert a property to descriptor.
@@ -133,7 +179,7 @@ inline napi_property_descriptor PropertyToDescriptor(
   // Initialize members to 0.
   napi_property_descriptor descriptor = {};
   // Translate Property to napi_property_descriptor.
-  descriptor.utf8name = prop.utf8name;
+  descriptor.name = ToNode(env, prop.name);
   descriptor.attributes = prop.attributes;
   descriptor.value = prop.value;
   if (prop.method)

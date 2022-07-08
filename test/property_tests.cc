@@ -25,6 +25,7 @@ struct SimpleMember {
 
 struct HasObjectMember {
   SimpleMember* member = new SimpleMember;
+  SimpleMember* strong = new SimpleMember;
 };
 
 }  // namespace
@@ -58,7 +59,9 @@ struct Type<HasObjectMember> {
   }
   static void Define(napi_env env, napi_value, napi_value prototype) {
     DefineProperties(env, prototype,
-                     Property("member", &HasObjectMember::member));
+                     Property("member", &HasObjectMember::member),
+                     Property("strong", &HasObjectMember::strong,
+                              Property::CacheMode::GetterAndSetter));
   }
 };
 

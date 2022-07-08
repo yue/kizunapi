@@ -8,19 +8,15 @@
 
 namespace nb {
 
-inline napi_value CreateObject(napi_env env) {
-  napi_value value = nullptr;
-  napi_status s = napi_create_object(env, &value);
-  assert(s == napi_ok);
-  return value;
-}
-
 // Helper for setting Object.
 template<typename Key, typename Value>
 inline bool Set(napi_env env, napi_value object, Key&& key, Value&& value) {
+  // Node throws if non-object is passed to property APIs.
+  if (!IsObject(env, object))
+    return false;
   return napi_set_property(env, object,
-                          nb::ToNode(env, std::forward<Key>(key)),
-                          nb::ToNode(env, std::forward<Value>(value)));
+                           nb::ToNode(env, std::forward<Key>(key)),
+                           nb::ToNode(env, std::forward<Value>(value)));
 }
 
 // Allow setting arbitrary key/value pairs.
@@ -35,6 +31,8 @@ inline bool Set(napi_env env, napi_value object, Key&& key, Value&& value,
 // Helper for getting from Object.
 template<typename Key, typename Value>
 inline bool Get(napi_env env, napi_value object, Key&& key, Value* out) {
+  if (!IsObject(env, object))
+    return false;
   napi_value v8_key = ToNode(env, std::forward<Key>(key));
   // Check key before get, otherwise this method will always return true for
   // Key == napi_value.
@@ -61,6 +59,8 @@ inline bool Get(napi_env env, napi_value object, Key&& key, Value* out,
 template<typename Key, typename Value>
 inline bool ReadOptions(napi_env env, napi_value object,
                         Key&& key, Value* out) {
+  if (!IsObject(env, object))
+    return false;
   napi_value v8_key = ToNode(env, std::forward<Key>(key));
   bool has;
   napi_status s = napi_has_property(env, object, v8_key, &has);

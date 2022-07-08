@@ -290,6 +290,20 @@ inline napi_value ToNode(napi_env env, const char16_t (&value)[n]) {
   return ConvertIgnoringStatus<char16_t[n]>(env, value);
 }
 
+// Object helpers.
+inline napi_value CreateObject(napi_env env) {
+  napi_value value = nullptr;
+  napi_status s = napi_create_object(env, &value);
+  assert(s == napi_ok);
+  return value;
+}
+
+inline bool IsObject(napi_env env, napi_value object) {
+  napi_valuetype type;
+  napi_status s = napi_typeof(env, object, &type);
+  return s == napi_ok && (type == napi_object || type == napi_function);
+}
+
 }  // namespace nb
 
 #endif  // SRC_TYPES_H_

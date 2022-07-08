@@ -42,4 +42,10 @@ exports.runTests = async (assert, binding) => {
   life.member.customData = 123
   await gcUntil(() => life.member.customData === undefined)
   assert.ok(true, 'Property JS wrapper of property gets GCed')
+
+  life.strong.customData = 123
+  life.member.customData = 123
+  await gcUntil(() => life.member.customData === undefined)
+  assert.deepStrictEqual(life.strong.customData, 123,
+                         'Property cached property does not get GCed')
 }

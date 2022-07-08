@@ -18,6 +18,8 @@ class Persistent {
     assert(s == napi_ok);
   }
 
+  Persistent() {}
+
   Persistent(const Persistent& other) {
     *this = other;
   }
@@ -75,6 +77,10 @@ class Persistent {
     // Otherwise there are other refs and we must create a new ref.
     is_weak_ = true;
     ref_ = WeakRefFromRef(env_, ref_);
+  }
+
+  bool IsEmpty() const {
+    return !ref_;
   }
 
  private:

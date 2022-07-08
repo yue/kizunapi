@@ -7,7 +7,7 @@
 #include <map>
 #include <utility>
 
-#include "src/persistent.h"
+#include "src/weak_map.h"
 
 namespace nb {
 
@@ -27,6 +27,16 @@ class InstanceData {
     InstanceData* ret = static_cast<InstanceData*>(data);
     assert(ret->tag_ == 0x8964);
     return ret;
+  }
+
+  // Get or create a object attached to an object.
+  napi_value GetAttachedTable(napi_value object) {
+    napi_value table;
+    if (attach_table_.Get(env_, object, &table))
+      return table;
+    table = CreateObject(env_);
+    attach_table_.Set(env_, object, table);
+    return table;
   }
 
   // Add and get persistent handles.
@@ -99,6 +109,7 @@ class InstanceData {
   explicit InstanceData(napi_env env) : env_(env) {}
 
   napi_env env_;
+  WeakMap attach_table_;
   std::map<void*, Persistent> strong_refs_;
   std::map<void*, std::pair<uint32_t, Persistent>> weak_refs_;
 
