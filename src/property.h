@@ -4,7 +4,7 @@
 #ifndef SRC_PROPERTY_H_
 #define SRC_PROPERTY_H_
 
-#include "src/instance_data.h"
+#include "src/attached_table.h"
 #include "src/property_internal.h"
 
 namespace nb {
@@ -115,17 +115,17 @@ struct Property {
 
   template<typename Sig>
   void SetProperty(internal::PropertyMethodHolder<Sig, Type::Method>&& holder) {
-    method = WrapPropertyMethod(std::move(holder));
+    method = CreateNodeCallbackWithHolder(std::move(holder));
   }
 
   template<typename Sig>
   void SetProperty(internal::PropertyMethodHolder<Sig, Type::Getter>&& holder) {
-    getter = WrapPropertyMethod(std::move(holder));
+    getter = CreateNodeCallbackWithHolder(std::move(holder));
   }
 
   template<typename Sig>
   void SetProperty(internal::PropertyMethodHolder<Sig, Type::Setter>&& holder) {
-    setter = WrapPropertyMethod(std::move(holder));
+    setter = CreateNodeCallbackWithHolder(std::move(holder));
   }
 
   template<typename T, typename... ArgTypes>
@@ -151,24 +151,25 @@ napi_value InvokePropertyMethod(napi_env env, napi_callback_info info) {
   if (type == CallbackType::Method)
     return property->method(env, info);
   // Getters and setters have cache policy.
-  napi_value table, result;
+  AttachedTable table;
+  napi_value result;
   // Check if there is cached result.
   if (property->cache_mode == Property::CacheMode::Getter ||
       property->cache_mode == Property::CacheMode::GetterAndSetter) {
-    table = InstanceData::Get(env)->GetAttachedTable(args.GetThis());
-    if (Get(env, table, property->name, &result))
+    table = AttachedTable(env, args.GetThis());
+    if (table.Get(property->name, &result))
       return result;
   }
   if (type == CallbackType::Getter) {
     result = property->getter(env, info);
     if (property->cache_mode == Property::CacheMode::Getter ||
         property->cache_mode == Property::CacheMode::GetterAndSetter)
-      Set(env, table, property->name, result);
+      table.Set(property->name, result);
   } else if (type == CallbackType::Setter) {
     result = property->setter(env, info);
     if (args.Length() > 0 &&
         property->cache_mode == Property::CacheMode::GetterAndSetter)
-      Set(env, table, property->name, args[0]);
+      table.Set(property->name, args[0]);
   }
   return result;
 }

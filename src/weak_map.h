@@ -4,7 +4,7 @@
 #ifndef SRC_WEAK_MAP_H_
 #define SRC_WEAK_MAP_H_
 
-#include "src/dict.h"
+#include "src/napi_util.h"
 #include "src/persistent.h"
 
 namespace nb {
@@ -13,33 +13,16 @@ class WeakMap {
  public:
   void Set(napi_env env, napi_value key, napi_value value) {
     napi_value weak_map = Init(env);
-    napi_value p_set;
-    if (!nb::Get(env, weak_map, "set", &p_set))
-      return;
-    napi_value args[] = {key, value};
-    napi_call_function(env, weak_map, p_set, 2, args, nullptr);
+    CallMethod(env, weak_map, "set", key, value);
   }
 
   bool Get(napi_env env, napi_value key, napi_value* result) {
     napi_value weak_map = Init(env);
-    napi_value p_get;
-    if (!nb::Get(env, weak_map, "get", &p_get))
-      return false;
-    napi_value ret;
-    if (napi_call_function(env, weak_map, p_get, 1, &key, &ret) != napi_ok)
-      return false;
-    if (!IsObject(env, ret))  // get returns null for unexist key
+    napi_value ret = CallMethod(env, weak_map, "get", key);
+    if (!ret || !IsObject(env, ret))  // get returns null for unexist key
       return false;
     *result = ret;
     return true;
-  }
-
-  void Delete(napi_env env, napi_value key) {
-    napi_value weak_map = Init(env);
-    napi_value p_delete;
-    if (!nb::Get(env, weak_map, "delete", &p_delete))
-      return;
-    napi_call_function(env, weak_map, p_delete, 1, &key, nullptr);
   }
 
  private:

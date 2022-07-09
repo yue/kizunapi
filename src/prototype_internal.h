@@ -104,7 +104,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     if (IsCalledFromConverter(args))
       return nullptr;
     // Invoke native constructor.
-    T* ptr = CFunctionInvoker<Sig>::Invoke(&args);
+    T* ptr = CallbackInvoker<Sig>::Invoke(&args);
     if (!ptr) {
       napi_throw_error(env, nullptr, "Unable to invoke constructor.");
       return nullptr;

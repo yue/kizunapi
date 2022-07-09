@@ -33,11 +33,6 @@ struct CallbackParamTraits<const char*&> {
   using LocalType = const char*;
 };
 
-// Flag to indicate the |this| object should be passed as first argument.
-enum CreateFunctionTemplateFlags {
-  HolderIsFirstArgument = 1 << 0,
-};
-
 // The supported function types for convertion.
 template<typename T, typename Enable = void>
 struct IsFunctionConvertionSupported
@@ -47,19 +42,12 @@ struct IsFunctionConvertionSupported
           std::is_function<T>::value ||
           std::is_member_function_pointer<T>::value> {};
 
-// CallbackHolder is used to pass a std::function from CreateFunctionTemplate
-// through DispatchToCallback, where it is invoked.
-template<typename Sig>
-struct CallbackHolder {
-  explicit CallbackHolder(std::function<Sig> callback, int flags = 0)
-      : callback(std::move(callback)), flags(flags) {}
-  CallbackHolder(const CallbackHolder<Sig>&) = default;
-  CallbackHolder(CallbackHolder<Sig>&&) = default;
-
-  std::function<Sig> callback;
-  int flags;
+// Flag to indicate the |this| object should be passed as first argument.
+enum CreateFunctionTemplateFlags {
+  HolderIsFirstArgument = 1 << 0,
 };
 
+// Helper to read C++ args from JS args.
 template<typename T>
 bool GetNextArgument(Arguments* args, int flags, bool is_first, T* result) {
   if (is_first && (flags & HolderIsFirstArgument) != 0) {
@@ -105,59 +93,19 @@ struct ArgumentHolder {
   }
 };
 
-// Create scope for executing callbacks.
-class CallbackScope {
- public:
-  explicit CallbackScope(napi_env env) : env_(env) {
-    napi_status s = napi_async_init(env,
-                                    CreateObject(env),
-                                    ToNode(env, nullptr),
-                                    &context_);
-    assert(s == napi_ok);
-    s = napi_open_callback_scope(env, nullptr, context_, &scope_);
-    assert(s == napi_ok);
-  }
+// CallbackHolder holds information about a std::function.
+template<typename Sig>
+struct CallbackHolder {
+  explicit CallbackHolder(std::function<Sig> callback, int flags = 0)
+      : callback(std::move(callback)), flags(flags) {}
+  CallbackHolder(const CallbackHolder<Sig>&) = default;
+  CallbackHolder(CallbackHolder<Sig>&&) = default;
 
-  ~CallbackScope() {
-    napi_status s = napi_close_callback_scope(env_, scope_);
-    assert(s == napi_ok);
-    s = napi_async_destroy(env_, context_);
-    assert(s == napi_ok);
-  }
-
-  CallbackScope& operator=(const CallbackScope&) = delete;
-  CallbackScope(const CallbackScope&) = delete;
-
-  napi_async_context context() { return context_; }
-
- private:
-  napi_env env_;
-  napi_async_context context_;
-  napi_callback_scope scope_;
+  std::function<Sig> callback;
+  int flags;
 };
 
-// Create scope for handle.
-class HandleScope {
- public:
-  explicit HandleScope(napi_env env) : env_(env) {
-    napi_status s = napi_open_handle_scope(env, &scope_);
-    assert(s == napi_ok);
-  }
-
-  ~HandleScope() {
-    napi_status s = napi_close_handle_scope(env_, scope_);
-    assert(s == napi_ok);
-  }
-
-  HandleScope& operator=(const HandleScope&) = delete;
-  HandleScope(const HandleScope&) = delete;
-
- private:
-  napi_env env_;
-  napi_handle_scope scope_;
-};
-
-// Create CallbackHolder for function pointers.
+// Create CallbackHolder for various function types.
 template<typename T, typename Enable = void>
 struct CallbackHolderFactory {};
 
@@ -218,15 +166,6 @@ class Invoker<IndicesHolder<indices...>, ArgTypes...>
     return callback(std::move(ArgumentHolder<indices, ArgTypes>::value)...);
   }
 
-  // In C++, you can declare the function foo(void), but you can't pass a void
-  // expression to foo. As a result, we must specialize the case of Callbacks
-  // that have the void return type.
-  void DispatchToCallback(
-      const std::function<void(ArgTypes...)>& callback) {
-    CallbackScope scope(args_->Env());
-    callback(std::move(ArgumentHolder<indices, ArgTypes>::value)...);
-  }
-
  private:
   static bool And() { return true; }
   template<typename... T>
@@ -240,13 +179,24 @@ class Invoker<IndicesHolder<indices...>, ArgTypes...>
 // Converts all the JavaScript arguments to C++ types and invokes the
 // std::function.
 template<typename Sig>
-struct CFunctionInvoker {};
+struct CallbackInvoker {};
 
 template<typename ReturnType, typename... ArgTypes>
-struct CFunctionInvoker<ReturnType(ArgTypes...)> {
-  static ReturnType Invoke(Arguments* args) {
-    using HolderT = CallbackHolder<ReturnType(ArgTypes...)>;
-    HolderT* holder = static_cast<HolderT*>(args->Data());
+struct CallbackInvoker<ReturnType(ArgTypes...)> {
+  using HolderT = CallbackHolder<ReturnType(ArgTypes...)>;
+  static inline ReturnType Invoke(napi_env env, napi_callback_info info) {
+    Arguments args(env, info);
+    return Invoke(&args);
+  }
+  static inline ReturnType Invoke(napi_env env, napi_callback_info info,
+                                  const HolderT* holder) {
+    Arguments args(env, info);
+    return Invoke(&args, holder);
+  }
+  static inline ReturnType Invoke(Arguments* args) {
+    return Invoke(args, static_cast<HolderT*>(args->Data()));
+  }
+  static inline ReturnType Invoke(Arguments* args, const HolderT* holder) {
     using Indices = typename IndicesGenerator<sizeof...(ArgTypes)>::type;
     Invoker<Indices, ArgTypes...> invoker(args, holder->flags);
     if (!invoker.IsOK())
@@ -255,23 +205,43 @@ struct CFunctionInvoker<ReturnType(ArgTypes...)> {
   }
 };
 
-// Wrap std::function to napi_callback.
+// Convert the return value of callback to napi_value.
 template<typename Sig>
-struct CFunctionWrapper {
-  static napi_value Call(napi_env env, napi_callback_info info) {
-    Arguments args(env, info);
-    return ToNode(env, CFunctionInvoker<Sig>::Invoke(&args));
+struct ReturnToNode {
+  static napi_value Invoke(napi_env env, napi_callback_info info) {
+    return ToNode(env, CallbackInvoker<Sig>::Invoke(env, info));
+  }
+  static napi_value InvokeWithHolder(napi_env env, napi_callback_info info,
+                                     const CallbackHolder<Sig>* holder) {
+    return ToNode(env, CallbackInvoker<Sig>::Invoke(env, info, holder));
   }
 };
 
 template<typename... ArgTypes>
-struct CFunctionWrapper<void(ArgTypes...)> {
-  static napi_value Call(napi_env env, napi_callback_info info) {
-    Arguments args(env, info);
-    CFunctionInvoker<void(ArgTypes...)>::Invoke(&args);
+struct ReturnToNode<void(ArgTypes...)> {
+  using RunType = void(ArgTypes...);
+  static napi_value Invoke(napi_env env, napi_callback_info info) {
+    CallbackInvoker<RunType>::Invoke(env, info);
+    return nullptr;
+  }
+  static napi_value InvokeWithHolder(napi_env env, napi_callback_info info,
+                                     const CallbackHolder<RunType>* holder) {
+    CallbackInvoker<RunType>::Invoke(env, info, holder);
     return nullptr;
   }
 };
+
+using NodeCallbackSig = napi_value(napi_env, napi_callback_info);
+
+// Create a std::function<napi_callback> from the passed |holder|, that can be
+// executed with arbitrary napi_callback_info.
+template<typename Sig>
+inline std::function<NodeCallbackSig> CreateNodeCallbackWithHolder(
+    CallbackHolder<Sig>&& holder) {
+  return [holder = std::move(holder)](napi_env env, napi_callback_info info) {
+    return ReturnToNode<Sig>::InvokeWithHolder(env, info, &holder);
+  };
+}
 
 // Create a JS Function that executes a provided C++ function or std::function.
 // JavaScript arguments are automatically converted via Type<T>, as is
@@ -285,7 +255,7 @@ inline napi_status CreateNodeFunction(napi_env env, T func,
   auto holder = std::make_unique<HolderT>(Factory::Create(std::move(func)));
   napi_value intermediate;
   napi_status s = napi_create_function(env, nullptr, 0,
-                                       &CFunctionWrapper<RunType>::Call,
+                                       &ReturnToNode<RunType>::Invoke,
                                        holder.get(), &intermediate);
   if (s != napi_ok)
     return s;
