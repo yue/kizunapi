@@ -12,6 +12,7 @@
         'property_tests.cc',
         'prototype_tests.cc',
         'types_tests.cc',
+        'wrap_method_tests.cc',
       ],
     }
   ]

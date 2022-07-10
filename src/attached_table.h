@@ -4,6 +4,7 @@
 #ifndef SRC_ATTACHED_TABLE_H_
 #define SRC_ATTACHED_TABLE_H_
 
+#include "src/arguments.h"
 #include "src/instance_data.h"
 
 namespace nb {
@@ -11,6 +12,9 @@ namespace nb {
 class AttachedTable {
  public:
   AttachedTable() = default;
+
+  explicit AttachedTable(const Arguments& args)
+      : AttachedTable(args.Env(), args.GetThis()) {}
 
   AttachedTable(napi_env env, napi_value object)
       : env_(env),

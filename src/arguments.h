@@ -62,7 +62,7 @@ class Arguments {
   ~Arguments() = default;
 
   napi_value operator[](size_t index) const {
-    return argv_[index];
+    return index < Length() ? argv_[index] : nullptr;
   }
 
   template<typename T>

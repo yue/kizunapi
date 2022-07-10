@@ -196,11 +196,18 @@ struct CallbackInvoker<ReturnType(ArgTypes...)> {
   static inline ReturnType Invoke(Arguments* args) {
     return Invoke(args, static_cast<HolderT*>(args->Data()));
   }
-  static inline ReturnType Invoke(Arguments* args, const HolderT* holder) {
+  static inline ReturnType Invoke(Arguments* args,
+                                  const HolderT* holder,
+                                  bool* success = nullptr) {
     using Indices = typename IndicesGenerator<sizeof...(ArgTypes)>::type;
     Invoker<Indices, ArgTypes...> invoker(args, holder->flags);
-    if (!invoker.IsOK())
+    if (!invoker.IsOK()) {
+      if (success)
+        *success = false;
       return ReturnType();
+    }
+    if (success)
+      *success = true;
     return invoker.DispatchToCallback(holder->callback);
   }
 };
@@ -215,6 +222,12 @@ struct ReturnToNode {
                                      const CallbackHolder<Sig>* holder) {
     return ToNode(env, CallbackInvoker<Sig>::Invoke(env, info, holder));
   }
+  static napi_value InvokeWithHolder(Arguments* args,
+                                     const CallbackHolder<Sig>* holder,
+                                     bool* success = nullptr) {
+    return ToNode(args->Env(),
+                  CallbackInvoker<Sig>::Invoke(args, holder, success));
+  }
 };
 
 template<typename... ArgTypes>
@@ -227,6 +240,14 @@ struct ReturnToNode<void(ArgTypes...)> {
   static napi_value InvokeWithHolder(napi_env env, napi_callback_info info,
                                      const CallbackHolder<RunType>* holder) {
     CallbackInvoker<RunType>::Invoke(env, info, holder);
+    return nullptr;
+  }
+  static napi_value InvokeWithHolder(Arguments* args,
+                                     const CallbackHolder<RunType>* holder,
+                                     bool* success) {
+    if (success)
+      *success = true;
+    CallbackInvoker<RunType>::Invoke(args, holder);
     return nullptr;
   }
 };

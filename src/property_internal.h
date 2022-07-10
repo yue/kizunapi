@@ -21,7 +21,7 @@ enum class CallbackType {
 template<typename Sig, CallbackType type>
 struct PropertyMethodHolder : public CallbackHolder<Sig> {
   explicit PropertyMethodHolder(CallbackHolder<Sig>&& holder)
-      : CallbackHolder<Sig>(holder) {}
+      : CallbackHolder<Sig>(std::move(holder)) {}
 };
 
 // Extends CallbackHolderFactory to support member object pointers.

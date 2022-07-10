@@ -38,7 +38,8 @@ class Persistent {
       env_ = other.env_;
       is_weak_ = other.is_weak_;
       if (is_weak_) {
-        ref_ = WeakRefFromRef(env_, other.ref_);
+        bool success = WeakRefFromRef(env_, other.ref_, &ref_);
+        assert(other.is_weak_ || success);
       } else {
         ref_ = other.ref_;
         napi_status s = napi_reference_ref(env_, ref_, nullptr);
@@ -76,7 +77,8 @@ class Persistent {
     }
     // Otherwise there are other refs and we must create a new ref.
     is_weak_ = true;
-    ref_ = WeakRefFromRef(env_, ref_);
+    bool success = WeakRefFromRef(env_, ref_, &ref_);
+    assert(success);
   }
 
   bool IsEmpty() const {
@@ -100,14 +102,13 @@ class Persistent {
     }
   }
 
-  static napi_ref WeakRefFromRef(napi_env env, napi_ref ref) {
+  static napi_status WeakRefFromRef(napi_env env, napi_ref ref,
+                                    napi_ref* new_ref) {
     napi_value value = nullptr;
     napi_status s = napi_get_reference_value(env, ref, &value);
-    assert(s == napi_ok);
-    napi_ref weak = nullptr;
-    s = napi_create_reference(env, value, 0, &weak);
-    assert(s == napi_ok);
-    return weak;
+    if (s != napi_ok)
+      return s;
+    return napi_create_reference(env, value, 0, new_ref);
   }
 
   napi_env env_ = nullptr;

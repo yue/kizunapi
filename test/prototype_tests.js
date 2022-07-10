@@ -11,8 +11,8 @@ exports.runTests = (assert, binding) => {
   const classWithConstructor = new ClassWithConstructor
   assert.equal(classWithConstructor.constructor.name, 'ClassWithConstructor',
                'Prototype can create class with constructor')
-  assert.ok(pointerOfClass(classWithConstructor) > 0,
-            'Prototype can pass class with constructor to native')
+  assert.equal(pointerOfClass(classWithConstructor) > 0, true,
+               'Prototype can pass class with constructor to native')
   assert.throws(() => { ClassWithConstructor() },
                 {
                   name: 'Error',
@@ -29,8 +29,8 @@ exports.runTests = (assert, binding) => {
                 'Prototype can throw in constructor')
 
   const {passThroughRefCounted, refCounted, RefCounted} = binding
-  assert.ok(refCounted instanceof RefCounted,
-            'Prototype push pointer to js')
+  assert.equal(refCounted instanceof RefCounted, true,
+               'Prototype push pointer to js')
   assert.equal(refCounted.count(), 2,
                'Prototype call wrap when pushing pointer to js')
   assert.equal(passThroughRefCounted(refCounted), refCounted,
@@ -41,10 +41,10 @@ exports.runTests = (assert, binding) => {
   const {pointerOfChild, pointerOfParent, Child, Parent} = binding
   const child = new Child
   const parent = new Parent
-  assert.ok(child instanceof Parent,
-            'Prototype native inheritance maps to js')
-  assert.ok(pointerOfParent(child) > 0,
-            'Prototype child can convert to parent in native')
+  assert.equal(child instanceof Parent, true,
+               'Prototype native inheritance maps to js')
+  assert.equal(pointerOfParent(child) > 0, true,
+               'Prototype child can convert to parent in native')
   assert.throws(() => { pointerOfChild(parent) },
                 {
                   name: 'TypeError',

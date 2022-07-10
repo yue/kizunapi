@@ -1,4 +1,4 @@
-exports.runTests = (assert, binding) => {
+exports.runTests = async (assert, binding) => {
   assert.deepStrictEqual(binding.returnVoid(), undefined,
                          'Callback void return value converts to undefined')
   assert.equal(binding.addOne(123), 124, 'Callback convert arg from js')

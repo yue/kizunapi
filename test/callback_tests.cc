@@ -55,13 +55,13 @@ struct Type<TestClass*> {
 }  // namespace nb
 
 void run_callback_tests(napi_env env, napi_value binding) {
-  nb::Set(env, binding, "returnVoid", &ReturnVoid);
-  nb::Set(env, binding, "addOne", &AddOne);
+  nb::Set(env, binding, "returnVoid", &ReturnVoid,
+                        "addOne", &AddOne);
 
   TestClass* object = new TestClass(8963);
-  nb::Set(env, binding, "object", object);
-  nb::Set(env, binding, "method", &TestClass::Method);
-  nb::Set(env, binding, "data", &TestClass::Data);
+  nb::Set(env, binding, "object", object,
+                        "method", &TestClass::Method,
+                        "data", &TestClass::Data);
 
   nb::Set(env, binding, "append64", &Append64);
 }

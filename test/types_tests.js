@@ -1,6 +1,6 @@
 exports.runTests = (assert, binding) => {
   assert.equal(binding.value, 'value', 'ToNode value')
-  assert.deepStrictEqual(binding.null, null, 'ToNode null')
+  assert.strictEqual(binding.null, null, 'ToNode null')
   assert.equal(binding.integer, 123, 'ToNode integer')
   assert.equal(binding.number, 3.14, 'ToNode number')
   assert.equal(binding.bool, false, 'ToNode bool')

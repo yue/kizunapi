@@ -2,14 +2,6 @@
 # yarn lockfile v1
 
 
-assert-simple-tap@3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/assert-simple-tap/-/assert-simple-tap-3.0.0.tgz#6bc163ff96b3ef4a226d6fab3054019b45eb2981"
-  integrity sha512-zdcjzx97uXA0GTUiI7G/UUsEh7Ujc5Z2HxRUFbKZNgXXFY1T3BT4a+aDM5S4ZqKI1ygM72NDgOaNkGJil7U6Yg==
-  dependencies:
-    stack-utils "^1.0.2"
-    tap-yaml "^1.0.0"
-
 cpplint.js@2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/cpplint.js/-/cpplint.js-2.0.0.tgz#ae9ffee979f9664e26e8dc3f19c0c909b06520dd"
@@ -22,26 +14,7 @@ detect-python-interpreter@^1.0.0:
   resolved "https://registry.yarnpkg.com/detect-python-interpreter/-/detect-python-interpreter-1.0.0.tgz#c281135be822ea8b93a415c463783bf3ff38bd4f"
   integrity sha512-fp/4GkvdS3GOeh31EeMvOpI4uVIIBqxdKD78+47aBLEAVE5QKX3i7ireWy9LnWAOWHG8rY/cczrYaQVRyMxqcg==
 
-escape-string-regexp@^2.0.0:
+tapsert@2.0.0:
   version "2.0.0"
-  resolved "https://registry.yarnpkg.com/escape-string-regexp/-/escape-string-regexp-2.0.0.tgz#a30304e99daa32e23b2fd20f51babd07cffca344"
-  integrity sha512-UpzcLCXolUWcNu5HtVMHYdXJjArjsF9C0aNnquZYY4uW/Vu0miy5YoWvbV345HauVvcAUnpRuhMMcqTcGOY2+w==
-
-stack-utils@^1.0.2:
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/stack-utils/-/stack-utils-1.0.5.tgz#a19b0b01947e0029c8e451d5d61a498f5bb1471b"
-  integrity sha512-KZiTzuV3CnSnSvgMRrARVCj+Ht7rMbauGDK0LdVFRGyenwdylpajAp4Q0i6SX8rEmbTpMMf6ryq2gb8pPq2WgQ==
-  dependencies:
-    escape-string-regexp "^2.0.0"
-
-tap-yaml@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/tap-yaml/-/tap-yaml-1.0.0.tgz#4e31443a5489e05ca8bbb3e36cef71b5dec69635"
-  integrity sha512-Rxbx4EnrWkYk0/ztcm5u3/VznbyFJpyXO12dDBHKWiDVxy7O2Qw6MRrwO5H6Ww0U5YhRY/4C/VzWmFPhBQc4qQ==
-  dependencies:
-    yaml "^1.5.0"
-
-yaml@^1.5.0:
-  version "1.10.2"
-  resolved "https://registry.yarnpkg.com/yaml/-/yaml-1.10.2.tgz#2301c5ffbf12b467de8da2333a459e29e7920e4b"
-  integrity sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==
+  resolved "https://registry.yarnpkg.com/tapsert/-/tapsert-2.0.0.tgz#b4b45d6a75b0ddef7ddf22b730d95234797a73c0"
+  integrity sha512-y685afod99OHrd4B0DnikjDjNG/fUnyt0musnUrIEImuLl75smjJ4OT0yufkE4N4KVNQkXa5yCRc2pdB+szELg==

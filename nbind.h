@@ -6,5 +6,6 @@
 
 #include "src/callback.h"
 #include "src/prototype.h"
+#include "src/wrap_method.h"
 
 #endif  // NBIND_H_

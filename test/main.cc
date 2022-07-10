@@ -7,6 +7,24 @@
 #include <windows.h>
 #endif
 
+namespace {
+
+void AddFinalizer(napi_env env, napi_value object,
+                  std::function<void()> callback) {
+  auto holder = std::make_unique<std::function<void()>>(std::move(callback));
+  napi_status s = napi_add_finalizer(env, object, holder.get(),
+                                     [](napi_env, void* ptr, void*) {
+    auto* func = static_cast<std::function<void()>*>(ptr);
+    (*func)();
+    delete func;
+  }, nullptr, nullptr);
+  if (s != napi_ok)
+    return;
+  holder.release();
+}
+
+}  // namespace
+
 #define TEST(Name) \
   {  \
     void run_##Name##_tests(napi_env env, napi_value exports); \
@@ -19,11 +37,13 @@ napi_value Init(napi_env env, napi_value exports) {
 #if defined(WIN32)
   SetErrorMode(GetErrorMode() & ~SEM_NOGPFAULTERRORBOX);
 #endif
+  nb::Set(env, exports, "addFinalizer", &AddFinalizer);
   TEST(callback);
   TEST(persistent);
   TEST(property);
   TEST(prototype);
   TEST(types);
+  TEST(wrap_method);
   return exports;
 }
 

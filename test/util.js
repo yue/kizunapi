@@ -1,4 +1,10 @@
-module.exports = {gcUntil}
+module.exports = {runInNewScope, gcUntil}
+
+function runInNewScope(func) {
+  (function() {
+    func()
+  })()
+}
 
 function gcUntil(condition) {
   return new Promise((resolve, reject) => {

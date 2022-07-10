@@ -35,7 +35,7 @@
     "node-addon-api"
   ],
   "devDependencies": {
-    "assert-simple-tap": "3.0.0",
-    "cpplint.js": "2.0.0"
+    "cpplint.js": "2.0.0",
+    "tapsert": "2.0.0"
   }
 }
