@@ -27,7 +27,8 @@ struct Type<Constructor<T>> {
 
 // Default converter for pointers.
 template<typename T>
-struct Type<T*, typename std::enable_if<std::is_class<T>::value>::type> {
+struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
+                                        std::is_class<Type<T>>::value>::type> {
   static constexpr const char* name = Type<T>::name;
   static inline napi_status ToNode(napi_env env, T* ptr, napi_value* result) {
     // Check if there is already a JS object created.
