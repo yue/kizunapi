@@ -1,8 +1,8 @@
 {
-  "description": "C++ Wrappers of Node-API",
   "name": "napi-bind",
+  "description": "C++ Wrappers of Node-API",
   "main": "index.js",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "gypfile": false,
   "files": [
     "*.h"

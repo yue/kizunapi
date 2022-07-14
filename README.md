@@ -1,13 +1,15 @@
 # napi-bind
 
-A set of C++ classes for type convertion between C++ and JavaScript using
+A set of C++ classes for type conversion between C++ and JavaScript using
 [Node-API](https://nodejs.org/api/n-api.html).
 
 Unlike most other binding libraries which focus on simplifying the use of
 Node-API in C++, napi-bind provides high-level APIs to convert functions and
-classes with minimum hand-written code.
+classes with minimum hand-written code. The core principle of napi-bind is,
+you don't write wrapper classes, instead you write type descriptions and the
+library will do the rest of the work.
 
-__This project is still under heavy development.__
+__This project is at early stage, behavior of APIs may change without notice.__
 
 ## Usage
 
@@ -34,16 +36,16 @@ __This project is still under heavy development.__
 ## Docs
 
 * [Tutorial](docs/tutorial.md)
-* API Reference
 
 ## Example
 
 This example maps C++ classes with inheritance relationship to JavaScript
 using non-intrusive APIs.
 
-```c
+```c++
 #include <nbind.h>
 
+// The classes to be exported to JavaScript.
 class Parent {
  public:
   int Year() const {
@@ -64,6 +66,7 @@ class Child : public Parent {
   int day_;
 };
 
+// Type information provided to napi-bind.
 namespace nb {
 
 template<>
@@ -101,10 +104,11 @@ struct Type<Child> {
 
 }  // namespace nb
 
+// Export the converted constructors to JavaScript.
 napi_value Init(napi_env env, napi_value exports) {
   nb::Set(env, exports,
-          "Parent", nb::Constructor<Parent>(),
-          "Child", nb::Constructor<Child>());
+          "Parent", nb::Class<Parent>(),
+          "Child", nb::Class<Child>());
 }
 
 NAPI_MODULE(NODE_GYP_MODULE_NAME, Init);
