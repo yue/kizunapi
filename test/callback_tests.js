@@ -17,7 +17,7 @@ exports.runTests = async (assert, binding) => {
   assert.throws(() => { binding.method() },
                 {
                   name: 'TypeError',
-                  message: 'Error converting this from Object to TestClass.',
+                  message: 'Error converting "this" to TestClass.',
                 },
                 'Callback throw when |this| does not match member function')
 

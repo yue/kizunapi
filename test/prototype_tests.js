@@ -63,7 +63,7 @@ exports.runTests = async (assert, binding, {addFinalizer}) => {
   assert.throws(() => { weakFactory.destroy() },
                 {
                   name: 'TypeError',
-                  message: 'Error converting this from WeakFactory to WeakFactory.',
+                  message: 'Error converting "this" to WeakFactory.',
                 },
                 'Prototype wrap and unwrap internal pointer from C++')
 

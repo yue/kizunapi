@@ -97,8 +97,7 @@ class Arguments {
 
     if (next_ == 0) {
       std::ostringstream ss;
-      ss << "Error converting this from " << NodeTypeToString(env_, this_)
-         << " to " << target_type_name << ".";
+      ss << "Error converting \"this\" to " << target_type_name << ".";
       napi_throw_type_error(env_, nullptr, ss.str().c_str());
       return;
     }
