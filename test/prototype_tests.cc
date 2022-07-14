@@ -20,7 +20,7 @@ class ThrowInConstructor {
 
 class RefCounted {
  public:
-  RefCounted() : count_(1) {}
+  RefCounted() : count_(0) {}
 
   RefCounted& operator=(const RefCounted&) = delete;
   RefCounted(const RefCounted&) = delete;
@@ -37,6 +37,8 @@ class RefCounted {
   int Count() const {
     return count_;
   }
+
+  void* data = nullptr;
 
  private:
   ~RefCounted() = default;
@@ -56,6 +58,57 @@ class Child : public Parent {
   int ChildMethod() {
     return 64;
   }
+};
+
+template<typename T>
+class WeakPtr {
+ public:
+  explicit WeakPtr(RefCounted* ref) : ref_(ref) {
+    ref_->AddRef();
+  }
+
+  WeakPtr(const WeakPtr&) = delete;
+
+  WeakPtr(WeakPtr&& other) {
+    ref_ = other.ref_;
+    other.ref_ = nullptr;
+  }
+
+  ~WeakPtr() {
+    if (ref_)
+      ref_->Release();
+  }
+
+  T* Get() {
+    return static_cast<T*>(ref_->data);
+  }
+
+ private:
+  RefCounted* ref_;
+};
+
+class WeakFactory {
+ public:
+  WeakFactory() : ref_(new RefCounted) {
+    ref_->data = this;
+    ref_->AddRef();
+  }
+
+  ~WeakFactory() {
+    ref_->data = nullptr;
+    ref_->Release();
+  }
+
+  void Destroy() {
+    delete this;
+  }
+
+  WeakPtr<WeakFactory> GetWeakPtr() {
+    return WeakPtr<WeakFactory>(ref_);
+  }
+
+ private:
+  RefCounted* ref_;
 };
 
 template<typename T>
@@ -102,12 +155,15 @@ struct Type<ThrowInConstructor> {
 template<>
 struct Type<RefCounted> {
   static constexpr const char* name = "RefCounted";
-  static void* Wrap(RefCounted* ptr) {
+  static RefCounted* Wrap(RefCounted* ptr) {
     ptr->AddRef();
     return ptr;
   }
-  static void Finalize(void* ptr) {
-    static_cast<RefCounted*>(ptr)->Release();
+  static void Finalize(RefCounted* ptr) {
+    ptr->Release();
+  }
+  static RefCounted* Constructor() {
+    return new RefCounted;
   }
   static void Define(napi_env env, napi_value, napi_value prototype) {
     Set(env, prototype, "count", &RefCounted::Count);
@@ -143,24 +199,52 @@ struct Type<Child> {
   }
 };
 
+template<>
+struct Type<WeakFactory> {
+  static constexpr const char* name = "WeakFactory";
+  static WeakPtr<WeakFactory>* Wrap(WeakFactory* ptr) {
+    return new WeakPtr<WeakFactory>(ptr->GetWeakPtr());
+  }
+  static WeakFactory* Unwrap(WeakPtr<WeakFactory>* data) {
+    return data->Get();
+  }
+  static void Finalize(WeakPtr<WeakFactory>* data) {
+    delete data;
+  }
+  static WeakFactory* Constructor() {
+    return new WeakFactory;
+  }
+  static void Destructor(WeakFactory* ptr) {
+    delete ptr;
+  }
+  static void Define(napi_env env, napi_value, napi_value prototype) {
+    Set(env, prototype, "destroy", &WeakFactory::Destroy);
+  }
+};
+
 }  // namespace nb
 
 void run_prototype_tests(napi_env env, napi_value binding) {
   nb::Set(env, binding,
-          "SimpleClass", nb::Constructor<SimpleClass>(),
-          "ClassWithConstructor", nb::Constructor<ClassWithConstructor>(),
+          "SimpleClass", nb::Class<SimpleClass>(),
+          "ClassWithConstructor", nb::Class<ClassWithConstructor>(),
           "pointerOfClass", &PointerOf<ClassWithConstructor>,
-          "ThrowInConstructor", nb::Constructor<ThrowInConstructor>());
+          "ThrowInConstructor", nb::Class<ThrowInConstructor>());
 
   RefCounted* ref_counted = new RefCounted;
   nb::Set(env, binding,
           "refCounted", ref_counted,
-          "RefCounted", nb::Constructor<RefCounted>(),
+          "RefCounted", nb::Class<RefCounted>(),
           "passThroughRefCounted", &PassThrough<RefCounted>);
 
   nb::Set(env, binding,
-          "Child", nb::Constructor<Child>(),
-          "Parent", nb::Constructor<Parent>(),
+          "Child", nb::Class<Child>(),
+          "Parent", nb::Class<Parent>(),
           "pointerOfParent", &PointerOf<Parent>,
           "pointerOfChild", &PointerOf<Child>);
+
+  WeakFactory* factory = new WeakFactory;
+  nb::Set(env, binding,
+          "weakFactory", factory,
+          "WeakFactory", nb::Class<WeakFactory>());
 }

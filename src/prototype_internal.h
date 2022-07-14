@@ -33,6 +33,99 @@ inline napi_value DummyConstructor(napi_env env, napi_callback_info info) {
   return nullptr;
 }
 
+// Check if type has methods defined.
+template<typename, typename = void>
+struct HasWrap : std::false_type {};
+
+template<typename T>
+struct HasWrap<T, void_t<decltype(Type<T>::Wrap)>> : std::true_type {};
+
+template<typename, typename = void>
+struct HasUnwrap : std::false_type {};
+
+template<typename T>
+struct HasUnwrap<T, void_t<decltype(Type<T>::Unwrap)>> : std::true_type {};
+
+template<typename, typename = void>
+struct HasFinalize : std::false_type {};
+
+template<typename T>
+struct HasFinalize<T, void_t<decltype(Type<T>::Finalize)>> : std::true_type {};
+
+template<typename, typename = void>
+struct HasDestructor : std::false_type {};
+
+template<typename T>
+struct HasDestructor<T, void_t<decltype(Type<T>::Destructor)>>
+    : std::true_type {};
+
+// Wrap native object to JS according to its type traits.
+template<typename T, typename Enable = void>
+struct Wrap {
+  static inline T* Do(T* ptr) {
+    return ptr;
+  }
+};
+
+template<typename T>
+struct Wrap<T, typename std::enable_if<is_function_pointer<
+                     decltype(&Type<T>::Wrap)>::value>::type> {
+  static inline auto* Do(T* ptr) {
+    auto* ret = Type<T>::Wrap(ptr);
+    static_assert(std::is_same<decltype(ret), T*>::value || HasUnwrap<T>::value,
+                  "Type<T>::Unwrap must be defined if Wrap does not return T*");
+    return ret;
+  }
+};
+
+// Unwrap native object from JS according to its type traits.
+template<typename T, typename Enable = void>
+struct Unwrap {
+  static inline T* Do(void* ptr) {
+    return static_cast<T*>(ptr);
+  }
+};
+
+template<typename T>
+struct Unwrap<T, typename std::enable_if<is_function_pointer<
+                     decltype(&Type<T>::Unwrap)>::value>::type> {
+  static inline T* Do(void* ptr) {
+    using WrapReturnType = decltype(Type<T>::Wrap(nullptr));
+    return Type<T>::Unwrap(static_cast<WrapReturnType>(ptr));
+  }
+};
+
+// Called to finalize a JavaScript object.
+template<typename T, typename Enable = void>
+struct Finalize {
+  static inline void Do(void* ptr) {
+  }
+};
+
+template<typename T>
+struct Finalize<T, typename std::enable_if<is_function_pointer<
+                     decltype(&Type<T>::Finalize)>::value>::type> {
+  template<typename D>
+  static inline void Do(D* ptr) {
+    Type<T>::Finalize(ptr);
+  }
+};
+
+// Called to destruct a native object.
+template<typename T, typename Enable = void>
+struct Destruct {
+  static inline void Do(void* ptr) {
+  }
+};
+
+template<typename T>
+struct Destruct<T, typename std::enable_if<is_function_pointer<
+                     decltype(&Type<T>::Destructor)>::value>::type> {
+  static inline void Do(T* ptr) {
+    Type<T>::Destructor(ptr);
+  }
+};
+
 // Receive property list from type and define its prototype.
 template<typename T, typename Enable = void>
 struct Prototype {
@@ -79,6 +172,9 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
   using Sig = typename FunctorTraits<decltype(&Type<T>::Constructor)>::RunType;
   using HolderT = CallbackHolder<Sig>;
   static napi_status Do(napi_env env, napi_value* result) {
+    static_assert(HasFinalize<T>::value || HasDestructor<T>::value,
+                  "A type that has Type<T>::Constructor defined must also have "
+                  "Type<T>::Constructor or Type<T>::Finalize defined.");
     auto holder = std::make_unique<HolderT>(&Type<T>::Constructor);
     napi_value constructor;
     napi_status s = napi_define_class(env, Type<T>::name, NAPI_AUTO_LENGTH,
@@ -110,13 +206,17 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
       return nullptr;
     }
     // Then wrap the native pointer.
-    napi_status s = napi_wrap(env, args.GetThis(), ptr,
-                              [](napi_env env, void* ptr, void*) {
+    auto* data = Wrap<T>::Do(ptr);
+    using DataType = decltype(data);
+    napi_status s = napi_wrap(env, args.GetThis(), data,
+                              [](napi_env env, void* data, void* ptr) {
       InstanceData::Get(env)->RemoveWeakRef(ptr);
-      Type<T>::Destructor(static_cast<T*>(ptr));
-    }, nullptr, nullptr);
+      Finalize<T>::Do(static_cast<DataType>(data));
+      Destruct<T>::Do(static_cast<T*>(ptr));
+    }, ptr, nullptr);
     if (s != napi_ok) {
-      Type<T>::Destructor(ptr);
+      Finalize<T>::Do(data);
+      Destruct<T>::Do(ptr);
       napi_throw_error(env, nullptr, "Unable to wrap native object.");
     }
     // Save weak reference.
@@ -185,23 +285,6 @@ struct InheritanceChain<T, typename std::enable_if<std::is_class<
       Inherit(env, constructor, parent);
     }
     return constructor;
-  }
-};
-
-// Unwrap native object from JS according to its type traits.
-template<typename T, typename Enable = void>
-struct Unwrap {
-  static inline bool Do(void* ptr, T** out) {
-    *out = static_cast<T*>(ptr);
-    return true;
-  }
-};
-
-template<typename T>
-struct Unwrap<T, typename std::enable_if<is_function_pointer<
-                     decltype(&Type<T>::Unwrap)>::value>::type> {
-  static inline bool Do(void* ptr, T** out) {
-    return Type<T>::Unwrap(ptr, out);
   }
 };
 

@@ -53,5 +53,5 @@ struct Type<PersistentMap> {
 
 void run_persistent_tests(napi_env env, napi_value binding) {
   nb::Set(env, binding,
-          "PersistentMap", nb::Constructor<PersistentMap>());
+          "PersistentMap", nb::Class<PersistentMap>());
 }

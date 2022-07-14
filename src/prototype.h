@@ -10,12 +10,12 @@ namespace nb {
 
 // Push a constructor to JS.
 template<typename T>
-struct Constructor {};
+struct Class {};
 
 template<typename T>
-struct Type<Constructor<T>> {
+struct Type<Class<T>> {
   static inline napi_status ToNode(napi_env env,
-                                   Constructor<T>,
+                                   Class<T>,
                                    napi_value* result) {
     napi_value constructor = internal::InheritanceChain<T>::Get(env);
     if (!constructor)
@@ -31,6 +31,10 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
                                         std::is_class<Type<T>>::value>::type> {
   static constexpr const char* name = Type<T>::name;
   static inline napi_status ToNode(napi_env env, T* ptr, napi_value* result) {
+    static_assert(internal::HasWrap<T>::value &&
+                  internal::HasFinalize<T>::value,
+                  "Converting pointer to JavaScript requires Type<T>::Wrap "
+                  "and Type<T>::Finalize being defined.");
     // Check if there is already a JS object created.
     InstanceData* instance_data = InstanceData::Get(env);
     if (instance_data->GetWeakRef(ptr, result))
@@ -41,25 +45,26 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
                                          nullptr, nullptr, &external);
     if (s != napi_ok)
       return s;
-    // Create a JS object with "new Constructor(external)".
+    // Create a JS object with "new Class(external)".
     napi_value constructor = internal::InheritanceChain<T>::Get(env);
     napi_value object;
     s = napi_new_instance(env, constructor, 1, &external, &object);
     if (s != napi_ok)
       return s;
     // Wrap the |ptr| into JS object.
-    void* data = Type<T>::Wrap(ptr);
+    auto* data = internal::Wrap<T>::Do(ptr);
+    using DataType = decltype(data);
     s = napi_wrap(env, object, data, [](napi_env env, void* data, void* ptr) {
       InstanceData::Get(env)->RemoveWeakRef(ptr);
-      Type<T>::Finalize(data);
+      internal::Finalize<T>::Do(static_cast<DataType>(data));
     }, ptr, nullptr);
     if (s != napi_ok) {
-      Type<T>::Finalize(data);
+      internal::Finalize<T>::Do(data);
       return s;
     }
-    *result = object;
     // Save weak reference.
     instance_data->AddWeakRef(ptr, object);
+    *result = object;
     return napi_ok;
   }
   static inline napi_status FromNode(napi_env env, napi_value value, T** out) {
@@ -69,8 +74,11 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
       return s;
     if (!internal::IsInstanceOf<T>(env, value))
       return napi_generic_failure;
-    return internal::Unwrap<T>::Do(result, out) ? napi_ok
-                                                : napi_generic_failure;
+    T* ptr = internal::Unwrap<T>::Do(result);
+    if (!ptr)
+      return napi_generic_failure;
+    *out = ptr;
+    return napi_ok;
   }
 };
 

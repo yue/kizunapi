@@ -68,5 +68,5 @@ struct Type<View> {
 }  // namespace nb
 
 void run_wrap_method_tests(napi_env env, napi_value binding) {
-  nb::Set(env, binding, "View", nb::Constructor<View>());
+  nb::Set(env, binding, "View", nb::Class<View>());
 }

@@ -33,9 +33,9 @@ struct CallbackParamTraits<const char*&> {
   using LocalType = const char*;
 };
 
-// The supported function types for convertion.
+// The supported function types for conversion.
 template<typename T, typename Enable = void>
-struct IsFunctionConvertionSupported
+struct IsFunctionConversionSupported
     : std::integral_constant<
           bool,
           is_function_pointer<T>::value ||

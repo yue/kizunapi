@@ -1,4 +1,6 @@
-exports.runTests = (assert, binding) => {
+const {runInNewScope, gcUntil} = require('./util')
+
+exports.runTests = async (assert, binding, {addFinalizer}) => {
   const {SimpleClass} = binding
   assert.throws(() => { new SimpleClass },
                 {
@@ -31,12 +33,14 @@ exports.runTests = (assert, binding) => {
   const {passThroughRefCounted, refCounted, RefCounted} = binding
   assert.equal(refCounted instanceof RefCounted, true,
                'Prototype push pointer to js')
-  assert.equal(refCounted.count(), 2,
+  assert.equal(refCounted.count(), 1,
                'Prototype call wrap when pushing pointer to js')
   assert.equal(passThroughRefCounted(refCounted), refCounted,
                'Prototype push pointer to native')
-  assert.equal(refCounted.count(), 2,
+  assert.equal(refCounted.count(), 1,
                'Prototype wrap is only called once per object')
+  assert.equal((new RefCounted).count(), 1,
+               'Prototype constructor and wrap work together')
 
   const {pointerOfChild, pointerOfParent, Child, Parent} = binding
   const child = new Child
@@ -53,4 +57,21 @@ exports.runTests = (assert, binding) => {
                 'Prototype parent can not convert to child')
   assert.equal(child.parentMethod(), 89,
                'Prototype child can call parent method')
+
+  const {weakFactory, WeakFactory} = binding
+  weakFactory.destroy()
+  assert.throws(() => { weakFactory.destroy() },
+                {
+                  name: 'TypeError',
+                  message: 'Error converting this from WeakFactory to WeakFactory.',
+                },
+                'Prototype wrap and unwrap internal pointer from C++')
+
+  let weakFactoryCollected
+  runInNewScope(() => {
+    const f = new WeakFactory
+    addFinalizer(f, () => weakFactoryCollected = true)
+  })
+  await gcUntil(() => weakFactoryCollected)
+  assert.ok(true, 'Prototype wrap and unwrap internal pointer from js')
 }

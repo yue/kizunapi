@@ -10,7 +10,7 @@ namespace nb {
 
 template<typename T,
          typename = typename std::enable_if<
-             internal::IsFunctionConvertionSupported<T>::value>::type>
+             internal::IsFunctionConversionSupported<T>::value>::type>
 std::function<napi_value(Arguments*)>
 WrapMethod(T&& func, std::function<void(const Arguments&)>&& ref_func) {
   auto holder = internal::CallbackHolderFactory<T>::Create(std::move(func));

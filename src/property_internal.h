@@ -12,7 +12,6 @@ namespace internal {
 
 // The type of the callback.
 enum class CallbackType {
-  Method,
   Getter,
   Setter,
 };

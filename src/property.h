@@ -10,12 +10,6 @@
 namespace nb {
 
 template<typename T>
-inline auto Method(T func) {
-  return internal::PropertyMethodHolderFactory<
-             T, internal::CallbackType::Method>::Create(func);
-}
-
-template<typename T>
 inline auto Getter(T func) {
   return internal::PropertyMethodHolderFactory<
              T, internal::CallbackType::Getter>::Create(func);
@@ -46,20 +40,17 @@ struct Property {
     if (attributes == napi_static) {
       if (value) {
         attributes = napi_default_jsproperty;
-        assert(!method && !getter && !setter);
-      } else if (method) {
-        attributes = napi_default_method;
-        assert(!value && !getter && !setter);
+        assert(!getter && !setter);
       } else if (getter && setter) {
         attributes = static_cast<napi_property_attributes>(napi_writable |
                                                            napi_enumerable);
-        assert(!value && !method);
+        assert(!value);
       } else if (getter) {
         attributes = napi_enumerable;
-        assert(!value && !method);
+        assert(!value);
       } else if (setter) {
         attributes = napi_writable;
-        assert(!value && !method);
+        assert(!value);
       } else {
         assert(false);
       }
@@ -70,7 +61,6 @@ struct Property {
   Property(Property&&) = default;
 
   std::string name;
-  std::function<internal::NodeCallbackSig> method;
   std::function<internal::NodeCallbackSig> getter;
   std::function<internal::NodeCallbackSig> setter;
   napi_value value = nullptr;
@@ -98,24 +88,11 @@ struct Property {
     value = v;
   }
 
-  // Treat raw functions as methods.
-  template<typename T>
-  typename std::enable_if<
-      internal::IsFunctionConvertionSupported<T>::value>::type
-  SetProperty(T func) {
-    return SetProperty(Method(func));
-  }
-
   // Treat raw member object pointer as getter and setter.
   template<typename T>
   typename std::enable_if<std::is_member_object_pointer<T>::value>::type
   SetProperty(T ptr) {
     SetProperty(Getter(ptr), Setter(ptr));
-  }
-
-  template<typename Sig>
-  void SetProperty(internal::PropertyMethodHolder<Sig, Type::Method>&& holder) {
-    method = CreateNodeCallbackWithHolder(std::move(holder));
   }
 
   template<typename Sig>
@@ -135,12 +112,6 @@ struct Property {
   }
 };
 
-// Alias Method(name, func) to Property(name, Method(func)).
-template<typename T>
-inline Property Method(std::string name, T func) {
-  return Property(std::move(name), Method(std::move(func)));
-}
-
 namespace internal {
 
 // Invoke a property method.
@@ -148,12 +119,9 @@ template<CallbackType type>
 napi_value InvokePropertyMethod(napi_env env, napi_callback_info info) {
   Arguments args(env, info);
   Property* property = static_cast<Property*>(args.Data());
-  if (type == CallbackType::Method)
-    return property->method(env, info);
-  // Getters and setters have cache policy.
+  // Check if there is cached result.
   AttachedTable table;
   napi_value result;
-  // Check if there is cached result.
   if (property->cache_mode == Property::CacheMode::Getter ||
       property->cache_mode == Property::CacheMode::GetterAndSetter) {
     table = AttachedTable(env, args.GetThis());
@@ -183,8 +151,6 @@ inline napi_property_descriptor PropertyToDescriptor(
   descriptor.name = ToNode(env, prop.name);
   descriptor.attributes = prop.attributes;
   descriptor.value = prop.value;
-  if (prop.method)
-    descriptor.method = InvokePropertyMethod<CallbackType::Method>;
   if (prop.getter)
     descriptor.getter = InvokePropertyMethod<CallbackType::Getter>;
   if (prop.setter)

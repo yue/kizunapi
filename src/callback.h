@@ -42,7 +42,7 @@ struct Type<std::function<ReturnType(ArgTypes...)>> {
 
 template<typename T>
 struct Type<T, typename std::enable_if<
-                   internal::IsFunctionConvertionSupported<T>::value>::type> {
+                   internal::IsFunctionConversionSupported<T>::value>::type> {
   static constexpr const char* name = "Function";
   static inline napi_status ToNode(napi_env env, T value, napi_value* result) {
     return internal::CreateNodeFunction(env, value, result);

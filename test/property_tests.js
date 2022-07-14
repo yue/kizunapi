@@ -7,12 +7,6 @@ exports.runTests = async (assert, binding) => {
   assert.equal(binding.value, undefined,
                'Property value defaults to configurable')
 
-  assert.equal(binding.method1(), 8964, 'Property method')
-  assert.equal(binding.method2(), binding.method3(),
-               'Property method define helpers')
-  assert.equal(binding.propertyIsEnumerable('method'), false,
-               'Property method defaults to not enumerable')
-
   assert.equal(binding.number, 19890604, 'Property getter')
   binding.number = 89
   assert.equal(binding.number, 90, 'Property setter')
