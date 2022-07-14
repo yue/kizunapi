@@ -1,7 +1,7 @@
 {
   'targets': [
     {
-      'target_name': 'nb_tests',
+      'target_name': 'ki_tests',
       'include_dirs': [
         '<!@(node -p "require(\'..\').include_dir")'
       ],

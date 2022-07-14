@@ -7,7 +7,7 @@
 #include <assert.h>
 #include <node_api.h>
 
-namespace nb {
+namespace ki {
 
 // RAII managed persistent handle.
 class Persistent {
@@ -116,6 +116,6 @@ class Persistent {
   bool is_weak_ = false;
 };
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_PERSISTENT_H_

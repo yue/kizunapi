@@ -7,7 +7,7 @@
 #include "src/arguments.h"
 #include "src/instance_data.h"
 
-namespace nb {
+namespace ki {
 
 class AttachedTable {
  public:
@@ -24,12 +24,12 @@ class AttachedTable {
 
   template<typename K, typename V>
   bool Get(K&& key, V* out) {
-    return nb::Get(env_, table_, std::forward<K>(key), out);
+    return ki::Get(env_, table_, std::forward<K>(key), out);
   }
 
   template<typename K, typename V>
   bool Set(K&& key, V&& value) {
-    return nb::Set(env_, table_, std::forward<K>(key), std::forward<V>(value));
+    return ki::Set(env_, table_, std::forward<K>(key), std::forward<V>(value));
   }
 
   void* operator new(size_t) = delete;
@@ -42,6 +42,6 @@ class AttachedTable {
   napi_value table_ = nullptr;
 };
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_ATTACHED_TABLE_H_

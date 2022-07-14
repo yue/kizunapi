@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace nb {
+namespace ki {
 
 namespace internal {
 
@@ -205,6 +205,6 @@ struct FunctorTraits<R (Receiver::*)(Args...) const> {
 
 }  // namespace internal
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_TEMPLATE_UTIL_H_

@@ -1,4 +1,4 @@
-name: napi-bind
+name: kizunapi
 
 on: [push, pull_request]
 

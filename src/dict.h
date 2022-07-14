@@ -6,7 +6,7 @@
 
 #include "src/types.h"
 
-namespace nb {
+namespace ki {
 
 // Helper for setting Object.
 template<typename Key, typename Value>
@@ -15,8 +15,8 @@ inline bool Set(napi_env env, napi_value object, Key&& key, Value&& value) {
   if (!IsObject(env, object))
     return false;
   return napi_set_property(env, object,
-                           nb::ToNode(env, std::forward<Key>(key)),
-                           nb::ToNode(env, std::forward<Value>(value)));
+                           ki::ToNode(env, std::forward<Key>(key)),
+                           ki::ToNode(env, std::forward<Value>(value)));
 }
 
 // Allow setting arbitrary key/value pairs.
@@ -80,6 +80,6 @@ inline bool ReadOptions(napi_env env, napi_value object, Key&& key, Value* out,
   return success;
 }
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_DICT_H_

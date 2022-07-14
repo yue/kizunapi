@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <nbind.h>
+#include <kizunapi.h>
 
 void run_types_tests(napi_env env, napi_value binding) {
-  nb::Set(env, binding,
-          "value", nb::ToNode(env, "value"),
+  ki::Set(env, binding,
+          "value", ki::ToNode(env, "value"),
           "null", nullptr,
           "integer", 123,
           "number", 3.14,
@@ -14,5 +14,5 @@ void run_types_tests(napi_env env, napi_value binding) {
           "ustring", std::u16string(u"ustring"),
           "charptr", "チャーポインター",
           "ucharptr", u"ucharptr",
-          "symbol", nb::Symbol("sym"));
+          "symbol", ki::Symbol("sym"));
 }

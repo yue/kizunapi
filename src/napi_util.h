@@ -8,7 +8,7 @@
 
 #include "src/dict.h"
 
-namespace nb {
+namespace ki {
 
 // Free the |ptr| in |object|'s finalizer.
 template<typename T>
@@ -29,7 +29,7 @@ template<typename Name, typename... ArgTypes>
 napi_value CallMethod(napi_env env, napi_value object, Name&& method,
                       ArgTypes... args) {
   napi_value func;
-  if (!nb::Get(env, object, std::forward<Name>(method), &func))
+  if (!ki::Get(env, object, std::forward<Name>(method), &func))
     return nullptr;
   napi_value argv[] = {ToNode(env, args)...};
   napi_value ret = nullptr;
@@ -100,6 +100,6 @@ class HandleScope {
   napi_handle_scope scope_;
 };
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_NAPI_UTIL_H_

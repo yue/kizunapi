@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <nbind.h>
+#include <kizunapi.h>
 
 namespace {
 
@@ -123,7 +123,7 @@ T* PassThrough(T* ptr) {
 
 }  // namespace
 
-namespace nb {
+namespace ki {
 
 template<>
 struct Type<SimpleClass> {
@@ -222,29 +222,29 @@ struct Type<WeakFactory> {
   }
 };
 
-}  // namespace nb
+}  // namespace ki
 
 void run_prototype_tests(napi_env env, napi_value binding) {
-  nb::Set(env, binding,
-          "SimpleClass", nb::Class<SimpleClass>(),
-          "ClassWithConstructor", nb::Class<ClassWithConstructor>(),
+  ki::Set(env, binding,
+          "SimpleClass", ki::Class<SimpleClass>(),
+          "ClassWithConstructor", ki::Class<ClassWithConstructor>(),
           "pointerOfClass", &PointerOf<ClassWithConstructor>,
-          "ThrowInConstructor", nb::Class<ThrowInConstructor>());
+          "ThrowInConstructor", ki::Class<ThrowInConstructor>());
 
   RefCounted* ref_counted = new RefCounted;
-  nb::Set(env, binding,
+  ki::Set(env, binding,
           "refCounted", ref_counted,
-          "RefCounted", nb::Class<RefCounted>(),
+          "RefCounted", ki::Class<RefCounted>(),
           "passThroughRefCounted", &PassThrough<RefCounted>);
 
-  nb::Set(env, binding,
-          "Child", nb::Class<Child>(),
-          "Parent", nb::Class<Parent>(),
+  ki::Set(env, binding,
+          "Child", ki::Class<Child>(),
+          "Parent", ki::Class<Parent>(),
           "pointerOfParent", &PointerOf<Parent>,
           "pointerOfChild", &PointerOf<Child>);
 
   WeakFactory* factory = new WeakFactory;
-  nb::Set(env, binding,
+  ki::Set(env, binding,
           "weakFactory", factory,
-          "WeakFactory", nb::Class<WeakFactory>());
+          "WeakFactory", ki::Class<WeakFactory>());
 }

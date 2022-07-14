@@ -6,7 +6,7 @@
 
 #include "src/callback_internal.h"
 
-namespace nb {
+namespace ki {
 
 // Define how callbacks are converted.
 template<typename ReturnType, typename... ArgTypes>
@@ -49,6 +49,6 @@ struct Type<T, typename std::enable_if<
   }
 };
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_CALLBACK_H_

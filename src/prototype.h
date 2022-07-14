@@ -6,7 +6,7 @@
 
 #include "src/prototype_internal.h"
 
-namespace nb {
+namespace ki {
 
 // Push a constructor to JS.
 template<typename T>
@@ -82,6 +82,6 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
   }
 };
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_PROTOTYPE_H_

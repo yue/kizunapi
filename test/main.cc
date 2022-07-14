@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <nbind.h>
+#include <kizunapi.h>
 
 #if defined(WIN32)
 #include <windows.h>
@@ -28,8 +28,8 @@ void AddFinalizer(napi_env env, napi_value object,
 #define TEST(Name) \
   {  \
     void run_##Name##_tests(napi_env env, napi_value exports); \
-    napi_value binding = nb::CreateObject(env); \
-    nb::Set(env, exports, #Name, binding); \
+    napi_value binding = ki::CreateObject(env); \
+    ki::Set(env, exports, #Name, binding); \
     run_##Name##_tests(env, binding); \
   }
 
@@ -37,7 +37,7 @@ napi_value Init(napi_env env, napi_value exports) {
 #if defined(WIN32)
   SetErrorMode(GetErrorMode() & ~SEM_NOGPFAULTERRORBOX);
 #endif
-  nb::Set(env, exports, "addFinalizer", &AddFinalizer);
+  ki::Set(env, exports, "addFinalizer", &AddFinalizer);
   TEST(callback);
   TEST(persistent);
   TEST(property);

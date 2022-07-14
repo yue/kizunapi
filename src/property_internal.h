@@ -6,7 +6,7 @@
 
 #include "src/callback_internal.h"
 
-namespace nb {
+namespace ki {
 
 namespace internal {
 
@@ -71,6 +71,6 @@ struct PropertyMethodHolderFactory<T, CallbackType::Setter,
 
 }  // namespace internal
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_PROPERTY_INTERNAL_H_

@@ -6,7 +6,7 @@
 
 #include "src/callback_internal.h"
 
-namespace nb {
+namespace ki {
 
 template<typename T,
          typename = typename std::enable_if<
@@ -26,6 +26,6 @@ WrapMethod(T&& func, std::function<void(const Arguments&)>&& ref_func) {
   };
 }
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_WRAP_METHOD_H_

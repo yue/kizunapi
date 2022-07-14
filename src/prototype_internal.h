@@ -7,7 +7,7 @@
 #include "src/property.h"
 #include "src/instance_data.h"
 
-namespace nb {
+namespace ki {
 
 namespace internal {
 
@@ -302,6 +302,6 @@ bool IsInstanceOf(napi_env env, napi_value object) {
 
 }  // namespace internal
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_PROTOTYPE_INTERNAL_H_

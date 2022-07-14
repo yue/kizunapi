@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <nbind.h>
+#include <kizunapi.h>
 
 namespace {
 
@@ -26,7 +26,7 @@ struct HasObjectMember {
 
 }  // namespace
 
-namespace nb {
+namespace ki {
 
 template<>
 struct Type<SimpleMember> {
@@ -61,14 +61,14 @@ struct Type<HasObjectMember> {
   }
 };
 
-}  // namespace nb
+}  // namespace ki
 
 void run_property_tests(napi_env env, napi_value binding) {
-  nb::DefineProperties(
+  ki::DefineProperties(
       env, binding,
-      nb::Property("value", nb::ToNode(env, "value")),
-      nb::Property("number", nb::Getter(&Getter), nb::Setter(&Setter)));
-  nb::Set(env, binding,
+      ki::Property("value", ki::ToNode(env, "value")),
+      ki::Property("number", ki::Getter(&Getter), ki::Setter(&Setter)));
+  ki::Set(env, binding,
           "member", new SimpleMember,
-          "HasObjectMember", nb::Class<HasObjectMember>());
+          "HasObjectMember", ki::Class<HasObjectMember>());
 }

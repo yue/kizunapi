@@ -9,7 +9,7 @@
 
 #include "src/weak_map.h"
 
-namespace nb {
+namespace ki {
 
 class InstanceData {
  public:
@@ -116,6 +116,6 @@ class InstanceData {
   const int tag_ = 0x8964;
 };
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_INSTANCE_DATA_H_

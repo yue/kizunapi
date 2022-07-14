@@ -1,20 +1,20 @@
 # Tutorial
 
-This tutorial walks through the C++ APIs of napi-bind. On how to setup
-a native module with the library, please check [README](../README.md).
+This tutorial walks through the C++ APIs of kizunapi. On how to setup a native
+module with the library, please check [README](../README.md).
 
 There is currently no API reference.
 
 ## Basic type conversions
 
-To convert types between C++ and JavaScript, you can use the `nb::ToNode` and
-`nb::FromNode` helpers:
+To convert types between C++ and JavaScript, you can use the `ki::ToNode` and
+`ki::FromNode` helpers:
 
 ```c++
-napi_value value = nb::ToNode(env, 8964);
+napi_value value = ki::ToNode(env, 8964);
 
 int integer;
-bool success = nb::FromNode(env, value, &integer);
+bool success = ki::FromNode(env, value, &integer);
 ```
 
 Compilation errors will happen if unsupported types are passed.
@@ -22,14 +22,14 @@ Compilation errors will happen if unsupported types are passed.
 There are also helpers to read and write properties of objects:
 
 ```c++
-napi_value exports = nb::CreateObject(env);
-nb::Set(env, exports,
+napi_value exports = ki::CreateObject(env);
+ki::Set(env, exports,
         "str", "This is a string",
         "number", 19890604);
 
 std::string str;
 int number;
-bool success = nb::Get(env, "str", &str, "number", &number);
+bool success = ki::Get(env, "str", &str, "number", &number);
 ```
 
 ## Functions
@@ -39,10 +39,10 @@ value and arguments will be converted automatically:
 
 ```c++
 std::function<std::string()> func = []() { return std::string("str"); };
-napi_value value = nb::ToNode(env, func);
+napi_value value = ki::ToNode(env, func);
 
 std::function<int(int, int)> add;
-bool success = nb::FromNode(env, &add);
+bool success = ki::FromNode(env, &add);
 ```
 
 Function pointers work too:
@@ -50,7 +50,7 @@ Function pointers work too:
 ```c++
 int Add(int a, int b) { return a + b; }
 
-napi_value add = nb::ToNode(env, &Add);
+napi_value add = ki::ToNode(env, &Add);
 ```
 
 When passing member functions, the converted JavaScript function will use the
@@ -62,16 +62,16 @@ struct Object {
   void Method() {}
 };
 
-nb::Set(env, prototype, "method", &Object::Method);
+ki::Set(env, prototype, "method", &Object::Method);
 ```
 
 ### Arguments
 
 If you want to support multiple arguments from JavaScript, you can add
-`nb::Arguments*` to the C++ function's parameters:
+`ki::Arguments*` to the C++ function's parameters:
 
 ```c++
-void CreateFile(const std::string& path, nb::Arguments* args) {
+void CreateFile(const std::string& path, ki::Arguments* args) {
   int options = 0;
   args->GetNext(&options);
   create_file(path, options);
@@ -90,7 +90,7 @@ void WriteToPasteboard(napi_env env, napi_value value) {
 
 The [built rules](../src/types.h) only support conversions of a very limited
 set of types, to convert a custom type, you need to define a custom rule, which
-is a specialization of a `nb::Type<T>` template class:
+is a specialization of a `ki::Type<T>` template class:
 
 ```c++
 struct Point {
@@ -98,7 +98,7 @@ struct Point {
   int y;
 };
 
-namespace nb {
+namespace ki {
 
 template<>
 struct Type<Point> {
@@ -119,10 +119,10 @@ struct Type<Point> {
   }
 };
 
-}  // namespace nb
+}  // namespace ki
 
 Point p = {89, 64};
-napi_value object = nb::ToNode(env, p);
+napi_value object = ki::ToNode(env, p);
 ```
 
 It is OK to ignore `ToNode` or `FromNode` method when the type only supports
@@ -134,27 +134,27 @@ JavaScript type instead of the C++ type.
 
 Mapping a C++ class to JavaScript is complicated, it involves lifetime
 management, pointer safety, inheritance and lots of things. Most details have
-been hidden by napi-bind, but you still need to understand the concepts to use
+been hidden by kizunapi, but you still need to understand the concepts to use
 the APIs safely.
 
 ### Converting a class to JavaScript
 
-Once you have defined a `nb::Type<T>` for a class, you can convert it to
-JavaScript with the `nb:Class` helper:
+Once you have defined a `ki::Type<T>` for a class, you can convert it to
+JavaScript with the `ki:Class` helper:
 
 ```c++
 class SimpleClass {};
 
-namespace nb {
+namespace ki {
 
 template<>
 struct Type<SimpleClass> {
   static constexpr const char* name = "SimpleClass";
 };
 
-}  // namespace nb
+}  // namespace ki
 
-nb::Set(env, exports, "SimpleClass", nb::Class<SimpleClass>());
+ki::Set(env, exports, "SimpleClass", ki::Class<SimpleClass>());
 ```
 
 ### Constructor and destructor
@@ -180,7 +180,7 @@ struct Type<SimpleClass> {
 };
 ```
 
-The `nb::Type<T>::Constructor` accepts arbitrary arguments:
+The `ki::Type<T>::Constructor` accepts arbitrary arguments:
 
 ```c++
   static inline RandomNumberGenerator* Constructor(int seed) {
@@ -210,7 +210,7 @@ struct Type<NSWindow> {
 
 With constructor and destructor created for the class, the next thing you want
 to do is usually filling its prototype with methods and properties. This can be
-done by defining a `nb::Type<T>::Define` method:
+done by defining a `ki::Type<T>::Define` method:
 
 ```c++
 template<>
@@ -228,19 +228,19 @@ can add properties to it to implement static class methods and properties. And
 the `prototype` is the prototype object, i.e. `SimpleClass.prototype`, it is
 where you should add class methods and properties.
 
-Pointers to member functions are automatically recognized by napi-bind and you
+Pointers to member functions are automatically recognized by kizunapi and you
 usually just populate the `prototype` with methods you want to expose:
 
 ```c++
-    nb::Set(env, prototype,
+    ki::Set(env, prototype,
             "open", &SimpleClass::Open,
             "close", &SimpleClass::Close);
 ```
 
 ### Properties
 
-You can also define properties by using the `nb::DefineProperties` API with
-`nb::Property` helper:
+You can also define properties by using the `ki::DefineProperties` API with
+`ki::Property` helper:
 
 ```c++
 int number = 19890604;
@@ -253,23 +253,23 @@ void Setter(int n) {
   number = n + 1;
 }
 
-nb::DefineProperties(env, exports,
-                     nb::Property("number", nb::Getter(&Getter),
-                                            nb::Setter(&Setter)));
+ki::DefineProperties(env, exports,
+                     ki::Property("number", ki::Getter(&Getter),
+                                            ki::Setter(&Setter)));
 ```
 
-The `nb::Getter` and `nb::Setter` can be omitted:
+The `ki::Getter` and `ki::Setter` can be omitted:
 
 ```c++
-nb::DefineProperties(env, exports,
-                     nb::Property("numberGetter", nb::Getter(&Getter)),
-                     nb::Property("numberSetter", nb::Setter(&Setter)));
+ki::DefineProperties(env, exports,
+                     ki::Property("numberGetter", ki::Getter(&Getter)),
+                     ki::Property("numberSetter", ki::Setter(&Setter)));
 ```
 
 To set a value:
 
 ```c++
-nb::Property("value", nb::ToNode(env, "value"));
+ki::Property("value", ki::ToNode(env, "value"));
 ```
 
 For member data of classes, you can pass pointers to them to set setter and
@@ -283,7 +283,7 @@ class Date {
   int day = 4;
 };
 
-namespace nb {
+namespace ki {
 
 template<>
 struct Type<Date> {
@@ -291,27 +291,27 @@ struct Type<Date> {
   static void Define(napi_env env,
                      napi_value constructor,
                      napi_value prototype) {
-    nb::DefineProperties(env, prototype,
-                         nb::Property("year", &Date::year),
-                         nb::Property("month", &Date::month),
-                         nb::Property("day", &Date::day));
+    ki::DefineProperties(env, prototype,
+                         ki::Property("year", &Date::year),
+                         ki::Property("month", &Date::month),
+                         ki::Property("day", &Date::day));
   }
 };
 
-}  // namespace nb
+}  // namespace ki
 ```
 
 You can also pass the `napi_property_attributes` to set attributes, but please
 note that the `napi_static` is not supported:
 
 ```c++
-nb::Property("date", napi_writable | napi_enumerable, nb::ToNode(env, 8964));
+ki::Property("date", napi_writable | napi_enumerable, ki::ToNode(env, 8964));
 ```
 
 ### Inheritance
 
-By specifying `nb::Type<T>::base`, you can hint the inheritance relationship to
-napi-bind and the generated JavaScript classes will do prototype inheritance
+By specifying `ki::Type<T>::base`, you can hint the inheritance relationship to
+kizunapi and the generated JavaScript classes will do prototype inheritance
 automatically:
 
 ```c++
@@ -333,13 +333,13 @@ After creating a class in JavaScript, you can get the instance of it in C++:
 
 ```c++
 SimpleClass* instance;
-bool success = nb::FromNode(env, &instance);
+bool success = ki::FromNode(env, &instance);
 ```
 
 But converting an C++ instance to JavaScript will fail with compilation error:
 
 ```c++
-nb::ToNode(env, new SimpleClass());  // does not compile
+ki::ToNode(env, new SimpleClass());  // does not compile
 ```
 
 This is because the latter involves lifetime management of the C++ instances.
@@ -373,7 +373,7 @@ class RefCounted {
   int count_;
 };
 
-namespace nb {
+namespace ki {
 
 template<>
 struct Type<RefCounted> {
@@ -390,13 +390,13 @@ struct Type<RefCounted> {
   }
 };
 
-}  // namespace nb
+}  // namespace ki
 ```
 
-The `nb::Type<T>::Wrap` is called when a C++ instance is being converted to
+The `ki::Type<T>::Wrap` is called when a C++ instance is being converted to
 JavaScript, and it should return a pointer that will be stored in the JavaScript
 object's internal field, which in most cases should just be the pointer to the
-instance. And `nb::Type<T>::Finalize` is called with the stored pointer when the
+instance. And `ki::Type<T>::Finalize` is called with the stored pointer when the
 JavaScript object is garbage collected. For a ref counted class, `Wrap` and
 `Finalize` should be where you increase and decrease ref counts.
 
@@ -404,21 +404,21 @@ The difference between `Destructor` and `Finalize` is, the `Destructor` is
 called with the return value of `Constructor`, while the `Finalize` is called
 with the return value of `Wrap`, if they are both defined then they will be both
 called if a instance created by `new Class` is garbage collected. For most
-cases, the `nb::Type<T>::Destructor` can be omitted if a `Finalize` method has
+cases, the `ki::Type<T>::Destructor` can be omitted if a `Finalize` method has
 been defined.
 
-Also note that if a `nb::Type<T>::Wrap` is defined, it will be called for the
+Also note that if a `ki::Type<T>::Wrap` is defined, it will be called for the
 pointer returned by `Constructor` automatically.
 
 ### Object internal storage and unwrapping
 
-For JavaScript objects created by napi-bind for wrapping C++ instances, they all
+For JavaScript objects created by kizunapi for wrapping C++ instances, they all
 have an internal storage to store a C++ pointer, which in most cases is just the
 pointer of the C++ instance they are wrapping.
 
 However it is possible that the internal storage stores the C++ instance in
 another type, for example weak pointer, and in this case you must define a
-`nb::Type<T>::Unwrap` to instruct how to receive the C++ instance from the
+`ki::Type<T>::Unwrap` to instruct how to receive the C++ instance from the
 internal storage:
 
 ```c++

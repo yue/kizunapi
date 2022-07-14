@@ -2,7 +2,7 @@ const fs = require('fs')
 const path = require('path')
 const assert = require('tapsert')
 
-const bindings = require('./build/Debug/nb_tests')
+const bindings = require('./build/Debug/ki_tests')
 
 main()
 

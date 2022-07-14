@@ -11,7 +11,7 @@
 #include "src/napi_util.h"
 #include "src/persistent.h"
 
-namespace nb {
+namespace ki {
 
 namespace internal {
 
@@ -340,6 +340,6 @@ struct V8FunctionInvoker<ReturnType(ArgTypes...)> {
 
 }  // namespace internal
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_CALLBACK_INTERNAL_H_

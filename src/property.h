@@ -7,7 +7,7 @@
 #include "src/attached_table.h"
 #include "src/property_internal.h"
 
-namespace nb {
+namespace ki {
 
 template<typename T>
 inline auto Getter(T func) {
@@ -179,6 +179,6 @@ inline napi_status DefineProperties(napi_env env, napi_value object,
   return napi_define_properties(env, object, desps.size(), &desps.front());
 }
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_PROPERTY_H_

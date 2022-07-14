@@ -8,7 +8,7 @@
 
 #include "src/dict.h"
 
-namespace nb {
+namespace ki {
 
 inline std::string NodeTypeToString(napi_env env, napi_value value) {
   if (!value)
@@ -136,6 +136,6 @@ struct Type<Arguments*> {
   static constexpr const char* name = "Arguments";
 };
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_ARGUMENTS_H_

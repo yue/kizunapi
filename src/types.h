@@ -12,7 +12,7 @@
 
 #include "src/template_util.h"
 
-namespace nb {
+namespace ki {
 
 template<typename T, typename Enable = void>
 struct Type {};
@@ -304,6 +304,6 @@ inline bool IsObject(napi_env env, napi_value object) {
   return s == napi_ok && (type == napi_object || type == napi_function);
 }
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_TYPES_H_

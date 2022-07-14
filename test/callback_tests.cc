@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <nbind.h>
+#include <kizunapi.h>
 
 namespace {
 
@@ -35,7 +35,7 @@ std::string Append64(std::function<std::string()> callback) {
 
 }  // namespace
 
-namespace nb {
+namespace ki {
 
 template<>
 struct Type<TestClass*> {
@@ -52,16 +52,16 @@ struct Type<TestClass*> {
   }
 };
 
-}  // namespace nb
+}  // namespace ki
 
 void run_callback_tests(napi_env env, napi_value binding) {
-  nb::Set(env, binding, "returnVoid", &ReturnVoid,
+  ki::Set(env, binding, "returnVoid", &ReturnVoid,
                         "addOne", &AddOne);
 
   TestClass* object = new TestClass(8963);
-  nb::Set(env, binding, "object", object,
+  ki::Set(env, binding, "object", object,
                         "method", &TestClass::Method,
                         "data", &TestClass::Data);
 
-  nb::Set(env, binding, "append64", &Append64);
+  ki::Set(env, binding, "append64", &Append64);
 }

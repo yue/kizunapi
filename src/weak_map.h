@@ -7,7 +7,7 @@
 #include "src/napi_util.h"
 #include "src/persistent.h"
 
-namespace nb {
+namespace ki {
 
 class WeakMap {
  public:
@@ -42,7 +42,7 @@ class WeakMap {
     if (s != napi_ok)
       return s;
     napi_value constructor;
-    if (!nb::Get(env, global, "WeakMap", &constructor))
+    if (!ki::Get(env, global, "WeakMap", &constructor))
       return napi_generic_failure;
     return napi_new_instance(env, constructor, 0, nullptr, instance);
   }
@@ -50,6 +50,6 @@ class WeakMap {
   Persistent handle_;
 };
 
-}  // namespace nb
+}  // namespace ki
 
 #endif  // SRC_WEAK_MAP_H_

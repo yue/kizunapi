@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <nbind.h>
+#include <kizunapi.h>
 
 namespace {
 
@@ -43,7 +43,7 @@ class View {
 
 }  // namespace
 
-namespace nb {
+namespace ki {
 
 template<>
 struct Type<View> {
@@ -65,8 +65,8 @@ struct Type<View> {
   }
 };
 
-}  // namespace nb
+}  // namespace ki
 
 void run_wrap_method_tests(napi_env env, napi_value binding) {
-  nb::Set(env, binding, "View", nb::Class<View>());
+  ki::Set(env, binding, "View", ki::Class<View>());
 }

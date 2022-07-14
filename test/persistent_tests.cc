@@ -1,20 +1,20 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <nbind.h>
+#include <kizunapi.h>
 
 namespace {
 
 class PersistentMap {
  public:
   void Set(napi_env env, int key, napi_value value) {
-    handles_.emplace(key, nb::Persistent(env, value));
+    handles_.emplace(key, ki::Persistent(env, value));
   }
 
   napi_value Get(napi_env env, int key) const {
     auto it = handles_.find(key);
     if (it == handles_.end())
-      return nb::ToNode(env, nullptr);
+      return ki::ToNode(env, nullptr);
     return it->second.Get();
   }
 
@@ -25,12 +25,12 @@ class PersistentMap {
   }
 
  private:
-  std::map<int, nb::Persistent> handles_;
+  std::map<int, ki::Persistent> handles_;
 };
 
 }  // namespace
 
-namespace nb {
+namespace ki {
 
 template<>
 struct Type<PersistentMap> {
@@ -49,9 +49,9 @@ struct Type<PersistentMap> {
   }
 };
 
-}  // namespace nb
+}  // namespace ki
 
 void run_persistent_tests(napi_env env, napi_value binding) {
-  nb::Set(env, binding,
-          "PersistentMap", nb::Class<PersistentMap>());
+  ki::Set(env, binding,
+          "PersistentMap", ki::Class<PersistentMap>());
 }

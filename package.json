@@ -1,11 +1,12 @@
 {
-  "name": "napi-bind",
+  "name": "kizunapi",
   "description": "C++ Wrappers of Node-API",
   "main": "index.js",
   "version": "0.0.1",
   "gypfile": false,
   "files": [
-    "*.h"
+    "src",
+    "kizunapi.h"
   ],
   "scripts": {
     "pretest": "node-gyp rebuild --debug -C test",
@@ -15,13 +16,13 @@
   },
   "readme": "README.md",
   "license": "MIT",
-  "homepage": "https://github.com/zcbenz/napi-bind",
+  "homepage": "https://github.com/zcbenz/kizunapi",
   "repository": {
     "type": "git",
-    "url": "git://github.com/zcbenz/napi-bind.git"
+    "url": "git://github.com/zcbenz/kizunapi.git"
   },
   "bugs": {
-    "url": "https://github.com/zcbenz/napi-bind/issues"
+    "url": "https://github.com/zcbenz/kizunapi/issues"
   },
   "keywords": [
     "n-api",
