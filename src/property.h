@@ -124,7 +124,7 @@ napi_value InvokePropertyMethod(napi_env env, napi_callback_info info) {
   napi_value result;
   if (property->cache_mode == Property::CacheMode::Getter ||
       property->cache_mode == Property::CacheMode::GetterAndSetter) {
-    table = AttachedTable(env, args.GetThis());
+    table = AttachedTable(args);
     if (table.Get(property->name, &result))
       return result;
   }

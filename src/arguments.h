@@ -79,10 +79,6 @@ class Arguments {
     return FromNode(env_, this_, out);
   }
 
-  napi_value GetThis() const {
-    return this_;
-  }
-
   bool IsConstructorCall() const {
     napi_value new_target;
     napi_status s = napi_get_new_target(env_, info_, &new_target);
@@ -109,9 +105,10 @@ class Arguments {
     napi_throw_type_error(env_, nullptr, ss.str().c_str());
   }
 
+  napi_value This() const { return this_; }
+  void* Data() const { return data_; }
   size_t Length() const { return argc_; }
   napi_env Env() const { return env_; }
-  void* Data() const { return data_; }
 
  private:
   napi_env env_;

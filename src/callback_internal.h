@@ -152,7 +152,7 @@ class Invoker<IndicesHolder<indices...>, ArgTypes...>
   // C++ has always been strict about the class initialization order,
   // so it is guaranteed ArgumentHolders will be initialized (and thus, will
   // extract arguments from Arguments) in the right order.
-  Invoker(Arguments* args, int flags = 0)
+  Invoker(Arguments* args, int flags)
       : ArgumentHolder<indices, ArgTypes>(args, flags)..., args_(args) {}
 
   bool IsOK() {
@@ -296,7 +296,7 @@ struct V8FunctionInvoker<void(ArgTypes...)> {
   static void Go(napi_env env, Persistent handle, ArgTypes&&... raw) {
     CallbackScope callback_scope(env);
     HandleScope handle_scope(env);
-    napi_value func = handle.Get();
+    napi_value func = handle.Value();
     if (!func) {
       napi_throw_error(env, nullptr, "The function has been garbage collected");
       return;
@@ -308,7 +308,10 @@ struct V8FunctionInvoker<void(ArgTypes...)> {
                                        func, args.size(),
                                        args.empty() ? nullptr: &args.front(),
                                        nullptr);
+#if V8_MAJOR_VERSION > 8
+    // Executing callback on exit results in error on Node 14.
     assert(s == napi_ok || s == napi_pending_exception);
+#endif
   }
 };
 
@@ -318,7 +321,7 @@ struct V8FunctionInvoker<ReturnType(ArgTypes...)> {
     CallbackScope callback_scope(env);
     HandleScope handle_scope(env);
     ReturnType ret;
-    napi_value func = handle.Get();
+    napi_value func = handle.Value();
     if (!func) {
       napi_throw_error(env, nullptr, "The function has been garbage collected");
       return ret;
@@ -331,7 +334,10 @@ struct V8FunctionInvoker<ReturnType(ArgTypes...)> {
                                        func, args.size(),
                                        args.empty() ? nullptr: &args.front(),
                                        &value);
+#if V8_MAJOR_VERSION > 8
+    // Executing callback on exit results in error on Node 14.
     assert(s == napi_ok || s == napi_pending_exception);
+#endif
     if (s == napi_ok)
       FromNode(env, value, &ret);
     return ret;

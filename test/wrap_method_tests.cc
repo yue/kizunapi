@@ -12,18 +12,22 @@ class View {
       child_->Release();
   }
 
+  void DoNothingWithView(View* v) {
+  }
+
   void AddChildView(View* child) {
     child_ = child;
     child_->AddRef();
   }
 
-  void AddEventListener(std::function<void()> callback) {
-    callback_ = callback;
+  void RemoveChildView(View* child) {
+    assert(child == child_);
+    child_->Release();
+    child_ = nullptr;
   }
 
-  void EmitChild() {
-    if (child_ && child_->callback_)
-      child_->callback_();
+  void AddEventListener(std::function<void()> callback) {
+    callback_ = callback;
   }
 
   void AddRef() {
@@ -56,12 +60,16 @@ struct Type<View> {
   }
   static void Define(napi_env env, napi_value, napi_value prototype) {
     Set(env, prototype,
+        "doNothingWithView", &View::DoNothingWithView,
         "addChildView",
         WrapMethod(&View::AddChildView, [](const Arguments& args) {
-          AttachedTable(args).Set("child", args[0]);
+          AttachedTable(args).Set(args[0], true);
         }),
-        "addEventListener", &View::AddEventListener,
-        "emitChild", &View::EmitChild);
+        "removeChildView",
+        WrapMethod(&View::RemoveChildView, [](const Arguments& args) {
+          AttachedTable(args).Delete(args[0]);
+        }),
+        "addEventListener", &View::AddEventListener);
   }
 };
 

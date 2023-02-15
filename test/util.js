@@ -1,8 +1,8 @@
 module.exports = {runInNewScope, gcUntil}
 
-function runInNewScope(func) {
-  (function() {
-    func()
+async function runInNewScope(func) {
+  await (async function() {
+    await func()
   })()
 }
 

@@ -60,13 +60,6 @@ class Persistent {
     return *this;
   }
 
-  napi_value Get() const {
-    napi_value result = nullptr;
-    napi_status s = napi_get_reference_value(env_, ref_, &result);
-    assert(s == napi_ok);
-    return result;
-  }
-
   void MakeWeak() {
     if (is_weak_ || !ref_)
       return;
@@ -79,6 +72,22 @@ class Persistent {
     is_weak_ = true;
     bool success = WeakRefFromRef(env_, ref_, &ref_);
     assert(success);
+  }
+
+  template<typename T>
+  T ToLocal() {
+    return T(env_, Value());
+  }
+
+  napi_env Env() const {
+    return env_;
+  }
+
+  napi_value Value() const {
+    napi_value result = nullptr;
+    napi_status s = napi_get_reference_value(env_, ref_, &result);
+    assert(s == napi_ok);
+    return result;
   }
 
   bool IsEmpty() const {

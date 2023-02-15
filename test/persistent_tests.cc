@@ -15,7 +15,7 @@ class PersistentMap {
     auto it = handles_.find(key);
     if (it == handles_.end())
       return ki::ToNode(env, nullptr);
-    return it->second.Get();
+    return it->second.Value();
   }
 
   void MakeWeak(int key) {

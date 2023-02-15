@@ -55,7 +55,7 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
     auto* data = internal::Wrap<T>::Do(ptr);
     using DataType = decltype(data);
     s = napi_wrap(env, object, data, [](napi_env env, void* data, void* ptr) {
-      InstanceData::Get(env)->RemoveWeakRef(ptr);
+      InstanceData::Get(env)->DeleteWeakRef(ptr);
       internal::Finalize<T>::Do(static_cast<DataType>(data));
     }, ptr, nullptr);
     if (s != napi_ok) {

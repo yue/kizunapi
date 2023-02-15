@@ -14,9 +14,10 @@ inline bool Set(napi_env env, napi_value object, Key&& key, Value&& value) {
   // Node throws if non-object is passed to property APIs.
   if (!IsObject(env, object))
     return false;
-  return napi_set_property(env, object,
-                           ki::ToNode(env, std::forward<Key>(key)),
-                           ki::ToNode(env, std::forward<Value>(value)));
+  return napi_ok == napi_set_property(
+      env, object,
+      ki::ToNode(env, std::forward<Key>(key)),
+      ki::ToNode(env, std::forward<Value>(value)));
 }
 
 // Allow setting arbitrary key/value pairs.
@@ -53,6 +54,15 @@ inline bool Get(napi_env env, napi_value object, Key&& key, Value* out,
   bool success = Get(env, object, std::forward<Key>(key), out);
   success &= Get(env, object, std::forward<ArgTypes>(args)...);
   return success;
+}
+
+// Remove proeprties.
+template<typename Key>
+inline bool Delete(napi_env env, napi_value object, Key&& key) {
+  bool success;
+  napi_status s = napi_delete_property(
+      env, object, ToNode(env, std::forward<Key>(key)), &success);
+  return s == napi_ok && success;
 }
 
 // Like Get but ignore unexist keys.

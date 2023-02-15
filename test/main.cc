@@ -23,6 +23,10 @@ void AddFinalizer(napi_env env, napi_value object,
   holder.release();
 }
 
+napi_value GetAttachedTable(napi_env env, napi_value value) {
+  return ki::AttachedTable(env, value).Value();
+}
+
 }  // namespace
 
 #define TEST(Name) \
@@ -37,7 +41,9 @@ napi_value Init(napi_env env, napi_value exports) {
 #if defined(WIN32)
   SetErrorMode(GetErrorMode() & ~SEM_NOGPFAULTERRORBOX);
 #endif
-  ki::Set(env, exports, "addFinalizer", &AddFinalizer);
+  ki::Set(env, exports,
+          "addFinalizer", &AddFinalizer,
+          "getAttachedTable", &GetAttachedTable);
   TEST(callback);
   TEST(persistent);
   TEST(property);
