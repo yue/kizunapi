@@ -153,8 +153,7 @@ struct Type<ThrowInConstructor> {
 };
 
 template<>
-struct Type<RefCounted> {
-  static constexpr const char* name = "RefCounted";
+struct TypeBridge<RefCounted> {
   static RefCounted* Wrap(RefCounted* ptr) {
     ptr->AddRef();
     return ptr;
@@ -162,6 +161,11 @@ struct Type<RefCounted> {
   static void Finalize(RefCounted* ptr) {
     ptr->Release();
   }
+};
+
+template<>
+struct Type<RefCounted> {
+  static constexpr const char* name = "RefCounted";
   static RefCounted* Constructor() {
     return new RefCounted;
   }
@@ -200,8 +204,7 @@ struct Type<Child> {
 };
 
 template<>
-struct Type<WeakFactory> {
-  static constexpr const char* name = "WeakFactory";
+struct TypeBridge<WeakFactory> {
   static WeakPtr<WeakFactory>* Wrap(WeakFactory* ptr) {
     return new WeakPtr<WeakFactory>(ptr->GetWeakPtr());
   }
@@ -211,6 +214,11 @@ struct Type<WeakFactory> {
   static void Finalize(WeakPtr<WeakFactory>* data) {
     delete data;
   }
+};
+
+template<>
+struct Type<WeakFactory> {
+  static constexpr const char* name = "WeakFactory";
   static WeakFactory* Constructor() {
     return new WeakFactory;
   }

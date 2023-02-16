@@ -31,16 +31,20 @@ namespace ki {
 template<>
 struct Type<SimpleMember> {
   static constexpr const char* name = "SimpleMember";
-  static SimpleMember* Wrap(SimpleMember* ptr) {
-    return ptr;
-  }
-  static void Finalize(SimpleMember* ptr) {
-  }
   static void Define(napi_env env, napi_value, napi_value prototype) {
     DefineProperties(env, prototype,
                      Property("getter", Getter(&SimpleMember::data)),
                      Property("setter", Setter(&SimpleMember::data)),
                      Property("data", &SimpleMember::data));
+  }
+};
+
+template<>
+struct TypeBridge<SimpleMember> {
+  static SimpleMember* Wrap(SimpleMember* ptr) {
+    return ptr;
+  }
+  static void Finalize(SimpleMember* ptr) {
   }
 };
 

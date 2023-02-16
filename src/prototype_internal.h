@@ -38,19 +38,21 @@ template<typename, typename = void>
 struct HasWrap : std::false_type {};
 
 template<typename T>
-struct HasWrap<T, void_t<decltype(Type<T>::Wrap)>> : std::true_type {};
+struct HasWrap<T, void_t<decltype(TypeBridge<T>::Wrap)>> : std::true_type {};
 
 template<typename, typename = void>
 struct HasUnwrap : std::false_type {};
 
 template<typename T>
-struct HasUnwrap<T, void_t<decltype(Type<T>::Unwrap)>> : std::true_type {};
+struct HasUnwrap<T, void_t<decltype(TypeBridge<T>::Unwrap)>>
+    : std::true_type {};
 
 template<typename, typename = void>
 struct HasFinalize : std::false_type {};
 
 template<typename T>
-struct HasFinalize<T, void_t<decltype(Type<T>::Finalize)>> : std::true_type {};
+struct HasFinalize<T, void_t<decltype(TypeBridge<T>::Finalize)>>
+    : std::true_type {};
 
 template<typename, typename = void>
 struct HasDestructor : std::false_type {};
@@ -69,9 +71,9 @@ struct Wrap {
 
 template<typename T>
 struct Wrap<T, typename std::enable_if<is_function_pointer<
-                     decltype(&Type<T>::Wrap)>::value>::type> {
+                     decltype(&TypeBridge<T>::Wrap)>::value>::type> {
   static inline auto* Do(T* ptr) {
-    auto* ret = Type<T>::Wrap(ptr);
+    auto* ret = TypeBridge<T>::Wrap(ptr);
     static_assert(std::is_same<decltype(ret), T*>::value || HasUnwrap<T>::value,
                   "Type<T>::Unwrap must be defined if Wrap does not return T*");
     return ret;
@@ -88,10 +90,10 @@ struct Unwrap {
 
 template<typename T>
 struct Unwrap<T, typename std::enable_if<is_function_pointer<
-                     decltype(&Type<T>::Unwrap)>::value>::type> {
+                     decltype(&TypeBridge<T>::Unwrap)>::value>::type> {
   static inline T* Do(void* ptr) {
-    using WrapReturnType = decltype(Type<T>::Wrap(nullptr));
-    return Type<T>::Unwrap(static_cast<WrapReturnType>(ptr));
+    using WrapReturnType = decltype(TypeBridge<T>::Wrap(nullptr));
+    return TypeBridge<T>::Unwrap(static_cast<WrapReturnType>(ptr));
   }
 };
 
@@ -104,10 +106,10 @@ struct Finalize {
 
 template<typename T>
 struct Finalize<T, typename std::enable_if<is_function_pointer<
-                     decltype(&Type<T>::Finalize)>::value>::type> {
+                     decltype(&TypeBridge<T>::Finalize)>::value>::type> {
   template<typename D>
   static inline void Do(D* ptr) {
-    Type<T>::Finalize(ptr);
+    TypeBridge<T>::Finalize(ptr);
   }
 };
 

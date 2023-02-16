@@ -378,6 +378,13 @@ namespace ki {
 template<>
 struct Type<RefCounted> {
   static constexpr const char* name = "RefCounted";
+  static inline RefCounted* Constructor() {
+    return new RefCounted();
+  }
+};
+
+template<>
+struct TypeBridge<RefCounted> {
   static inline RefCounted* Wrap(RefCounted* ptr) {
     ptr->AddRef();
     return ptr;
@@ -385,20 +392,18 @@ struct Type<RefCounted> {
   static inline void Finalize(RefCounted* ptr) {
     ptr->Release();
   }
-  static inline RefCounted* Constructor() {
-    return new RefCounted();
-  }
 };
 
 }  // namespace ki
 ```
 
-The `ki::Type<T>::Wrap` is called when a C++ instance is being converted to
-JavaScript, and it should return a pointer that will be stored in the JavaScript
-object's internal field, which in most cases should just be the pointer to the
-instance. And `ki::Type<T>::Finalize` is called with the stored pointer when the
-JavaScript object is garbage collected. For a ref counted class, `Wrap` and
-`Finalize` should be where you increase and decrease ref counts.
+The `ki::TypeBridge<T>::Wrap` is called when a C++ instance is being converted
+to JavaScript, and it should return a pointer that will be stored in the
+JavaScript object's internal field, which in most cases should just be the
+pointer to the instance. And `ki::TypeBridge<T>::Finalize` is called with the
+stored pointer when the JavaScript object is garbage collected. For a ref
+counted class, `Wrap` and `Finalize` should be where you increase and decrease
+ref counts.
 
 The difference between `Destructor` and `Finalize` is, the `Destructor` is
 called with the return value of `Constructor`, while the `Finalize` is called
@@ -407,8 +412,8 @@ called if a instance created by `new Class` is garbage collected. For most
 cases, the `ki::Type<T>::Destructor` can be omitted if a `Finalize` method has
 been defined.
 
-Also note that if a `ki::Type<T>::Wrap` is defined, it will be called for the
-pointer returned by `Constructor` automatically.
+Also note that if a `ki::TypeBridge<T>::Wrap` is defined, it will be called for
+the pointer returned by `Constructor` automatically.
 
 ### Object internal storage and unwrapping
 
@@ -418,13 +423,23 @@ pointer of the C++ instance they are wrapping.
 
 However it is possible that the internal storage stores the C++ instance in
 another type, for example weak pointer, and in this case you must define a
-`ki::Type<T>::Unwrap` to instruct how to receive the C++ instance from the
+`ki::TypeBridge<T>::Unwrap` to instruct how to receive the C++ instance from the
 internal storage:
 
 ```c++
 template<>
 struct Type<Factory> {
   static constexpr const char* name = "Factory";
+  static Factory* Constructor() {
+    return new Factory;
+  }
+  static void Destructor(Factory* ptr) {
+    delete ptr;
+  }
+};
+
+template<>
+struct TypeBridge<Factory> {
   static WeakPtr<Factory>* Wrap(Factory* ptr) {
     return new WeakPtr<Factory>(ptr->GetWeakPtr());
   }
@@ -433,12 +448,6 @@ struct Type<Factory> {
   }
   static void Finalize(WeakPtr<Factory>* data) {
     delete data;
-  }
-  static Factory* Constructor() {
-    return new Factory;
-  }
-  static void Destructor(Factory* ptr) {
-    delete ptr;
   }
 };
 ```

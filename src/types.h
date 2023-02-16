@@ -15,6 +15,9 @@
 namespace ki {
 
 template<typename T, typename Enable = void>
+struct TypeBridge {};
+
+template<typename T, typename Enable = void>
 struct Type {};
 
 template<>
