@@ -5,6 +5,8 @@
 #ifndef SRC_CALLBACK_INTERNAL_H_
 #define SRC_CALLBACK_INTERNAL_H_
 
+#include <v8-version.h>
+
 #include <functional>
 
 #include "src/arguments.h"
@@ -320,7 +322,7 @@ struct V8FunctionInvoker<ReturnType(ArgTypes...)> {
   static ReturnType Go(napi_env env, Persistent handle, ArgTypes&&... raw) {
     CallbackScope callback_scope(env);
     HandleScope handle_scope(env);
-    ReturnType ret;
+    ReturnType ret{};
     napi_value func = handle.Value();
     if (!func) {
       napi_throw_error(env, nullptr, "The function has been garbage collected");

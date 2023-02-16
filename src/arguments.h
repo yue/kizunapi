@@ -49,6 +49,8 @@ inline std::string NodeTypeToString(napi_env env, napi_value value) {
 // to make it easier to marshall arguments and return values between V8 and C++.
 class Arguments {
  public:
+  Arguments() = default;
+
   Arguments(napi_env env, napi_callback_info info) : env_(env), info_(info) {
     napi_status s = napi_get_cb_info(env, info, &argc_, NULL, NULL, NULL);
     assert(s == napi_ok);

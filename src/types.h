@@ -243,13 +243,44 @@ struct Type<SymbolHolder<n>> {
   static inline napi_status ToNode(napi_env env,
                                    SymbolHolder<n> value,
                                    napi_value* result) {
-    napi_value name;
-    napi_status s = Type<char[n]>::ToNode(env, value.str, &name);
+    napi_value symbol;
+    napi_status s = Type<char[n]>::ToNode(env, value.str, &symbol);
     if (s != napi_ok)
       return s;
-    return napi_create_symbol(env, name, result);
+    return napi_create_symbol(env, symbol, result);
   }
 };
+
+// Function helpers.
+template<typename T>
+inline napi_status ConvertToNode(napi_env env, const T& value,
+                                 napi_value* result) {
+  return Type<T>::ToNode(env, value, result);
+}
+
+template<typename T>
+inline napi_status ConvertToNode(napi_env env, T&& value,
+                                 napi_value* result) {
+  return Type<std::decay_t<T>>::ToNode(env, std::forward<T>(value), result);
+}
+
+template<typename T>
+inline napi_status ConvertFromNode(napi_env env, napi_value value, T* out) {
+  return Type<T>::FromNode(env, value, out);
+}
+
+// Optimized version for string iterals.
+template<size_t n>
+inline napi_status ConvertToNode(napi_env env, const char (&value)[n],
+                                 napi_value* result) {
+  return Type<char[n]>::ToNode(env, value, result);
+}
+
+template<size_t n>
+inline napi_status ConvertToNode(napi_env env, const char16_t (&value)[n],
+                                 napi_value* result) {
+  return Type<char16_t[n]>::ToNode(env, value, result);
+}
 
 // Convert from In to Out and ignore error.
 template<typename Out, typename In>
@@ -279,7 +310,6 @@ inline bool FromNode(napi_env env, napi_value value, T* out) {
   return Type<T>::FromNode(env, value, out) == napi_ok;
 }
 
-// Optimized version for string iterals.
 template<size_t n>
 inline napi_value ToNode(napi_env env, const char (&value)[n]) {
   return ConvertIgnoringStatus<char[n]>(env, value);
@@ -303,6 +333,52 @@ inline bool IsObject(napi_env env, napi_value object) {
   napi_status s = napi_typeof(env, object, &type);
   return s == napi_ok && (type == napi_object || type == napi_function);
 }
+
+// Define converters for some frequently used types.
+template<typename T>
+struct Type<std::vector<T>> {
+  static constexpr const char* name = "Array";
+  static inline napi_status ToNode(napi_env env,
+                                   const std::vector<T>& vec,
+                                   napi_value* result) {
+    napi_status s = napi_create_array_with_length(env, vec.size(), result);
+    if (s != napi_ok)
+      return s;
+    for (size_t i = 0; i < vec.size(); ++i) {
+      napi_value el;
+      s = ConvertToNode(env, vec[i], &el);
+      if (s != napi_ok)
+        return s;
+      napi_set_element(env, *result, i, el);
+    }
+    return napi_ok;
+  }
+  static napi_status FromNode(napi_env env,
+                              napi_value value,
+                              std::vector<T>* out) {
+    bool is_array;
+    napi_status s = napi_is_array(env, value, &is_array);
+    if (s != napi_ok)
+      return s;
+    if (!is_array)
+      return napi_array_expected;
+    uint32_t length;
+    s = napi_get_array_length(env, value, &length);
+    if (s != napi_ok)
+      return s;
+    out->resize(length);
+    for (uint32_t i = 0; i < length; ++i) {
+      napi_value el = nullptr;
+      s = napi_get_element(env, value, i, &el);
+      if (s != napi_ok)
+        return s;
+      s = Type<T>::FromNode(env, el, &(*out)[i]);
+      if (s != napi_ok)
+        return s;
+    }
+    return napi_ok;
+  }
+};
 
 }  // namespace ki
 

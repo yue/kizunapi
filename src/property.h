@@ -37,7 +37,7 @@ struct Property {
     SetProperty(std::move(args)...);
     if (cache_mode == CacheMode::Default)
       cache_mode = CacheMode::NoCache;
-    if (attributes == napi_static) {
+    if (attributes == napi_static) {  // napi_static means default here.
       if (value) {
         attributes = napi_default_jsproperty;
         assert(!getter && !setter);
