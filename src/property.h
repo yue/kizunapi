@@ -26,7 +26,6 @@ struct Property {
   using Type = internal::CallbackType;
 
   enum class CacheMode {
-    Default,
     NoCache,
     Getter,
     GetterAndSetter,
@@ -35,8 +34,6 @@ struct Property {
   template<typename... ArgTypes>
   Property(std::string name, ArgTypes... args) : name(std::move(name)) {
     SetProperty(std::move(args)...);
-    if (cache_mode == CacheMode::Default)
-      cache_mode = CacheMode::NoCache;
     if (attributes == napi_static) {  // napi_static means default here.
       if (value) {
         attributes = napi_default_jsproperty;
@@ -64,7 +61,7 @@ struct Property {
   std::function<internal::NodeCallbackSig> getter;
   std::function<internal::NodeCallbackSig> setter;
   napi_value value = nullptr;
-  CacheMode cache_mode = CacheMode::Default;
+  CacheMode cache_mode = CacheMode::NoCache;
 
   // We don't accept napi_static so use it as null.
   napi_property_attributes attributes = napi_static;
@@ -119,16 +116,15 @@ template<CallbackType type>
 napi_value InvokePropertyMethod(napi_env env, napi_callback_info info) {
   Arguments args(env, info);
   Property* property = static_cast<Property*>(args.Data());
-  // Check if there is cached result.
-  AttachedTable table;
   napi_value result;
-  if (property->cache_mode == Property::CacheMode::Getter ||
-      property->cache_mode == Property::CacheMode::GetterAndSetter) {
-    table = AttachedTable(args);
-    if (table.Get(property->name, &result))
-      return result;
-  }
   if (type == CallbackType::Getter) {
+    AttachedTable table;
+    if (property->cache_mode == Property::CacheMode::Getter ||
+        property->cache_mode == Property::CacheMode::GetterAndSetter) {
+      table = AttachedTable(args);
+      if (table.Get(property->name, &result))
+        return result;
+    }
     result = property->getter(env, info);
     if (property->cache_mode == Property::CacheMode::Getter ||
         property->cache_mode == Property::CacheMode::GetterAndSetter)
@@ -137,7 +133,7 @@ napi_value InvokePropertyMethod(napi_env env, napi_callback_info info) {
     result = property->setter(env, info);
     if (args.Length() > 0 &&
         property->cache_mode == Property::CacheMode::GetterAndSetter)
-      table.Set(property->name, args[0]);
+      AttachedTable(args).Set(property->name, args[0]);
   }
   return result;
 }
