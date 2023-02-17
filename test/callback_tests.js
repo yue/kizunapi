@@ -15,6 +15,9 @@ exports.runTests = async (assert, binding, {addFinalizer}) => {
   assert.equal(binding.append64(() => '89'), '8964',
                'Callback convert js function to std::function')
 
+  assert.equal(binding.nullFunction, null,
+               'Callback convert null function to null')
+
   binding.method.call(binding.object, 1)
   assert.equal(binding.data.call(binding.object), 8964,
                'Callback convert member function to js')

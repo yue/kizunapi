@@ -53,6 +53,8 @@ struct Type<std::function<ReturnType(ArgTypes...)>> {
   static inline napi_status ToNode(napi_env env,
                                    std::function<Sig> value,
                                    napi_value* result) {
+    if (!value)
+      return napi_get_null(env, result);
     return internal::CreateNodeFunction(env, std::move(value), result);
   }
   static napi_status FromNode(napi_env env,

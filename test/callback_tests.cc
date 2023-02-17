@@ -71,7 +71,8 @@ struct Type<TestClass*> {
 void run_callback_tests(napi_env env, napi_value binding) {
   ki::Set(env, binding, "returnVoid", &ReturnVoid,
                         "addOne", &AddOne,
-                        "append64", &Append64);
+                        "append64", &Append64,
+                        "nullFunction", std::function<void()>());
 
   TestClass* object = new TestClass(8963);
   ki::Set(env, binding, "object", object,
