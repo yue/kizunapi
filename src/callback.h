@@ -22,11 +22,11 @@ namespace ki {
 //   weakMap.get(win).set('onClick', callback)
 // In this way V8 can recognize the circular reference and do GC.
 template<typename ReturnType, typename... ArgTypes>
-napi_status WeakFunctionFromNode(napi_env env,
-                                 napi_value value,
-                                 std::function<ReturnType(ArgTypes...)>* out,
-                                 // This parameter is only used internally.
-                                 int ref_count = 0) {
+inline napi_status ConvertWeakFunctionFromNode(
+    napi_env env,
+    napi_value value,
+    std::function<ReturnType(ArgTypes...)>* out,
+    int ref_count = 0 /* This parameter is only used internally */) {
   napi_valuetype type;
   napi_status s = napi_typeof(env, value, &type);
   if (s != napi_ok)
@@ -59,8 +59,9 @@ struct Type<std::function<ReturnType(ArgTypes...)>> {
   }
   static napi_status FromNode(napi_env env,
                               napi_value value,
-                              std::function<Sig>* out) {
-    return WeakFunctionFromNode(env, value, out, 1 /* ref_count */);
+                              std::function<Sig>* out,
+                              int ref_count = 1 /* internal */) {
+    return ConvertWeakFunctionFromNode(env, value, out, ref_count);
   }
 };
 

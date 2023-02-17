@@ -13,7 +13,8 @@ template<typename T,
              internal::IsFunctionConversionSupported<T>::value>::type>
 std::function<napi_value(Arguments*)>
 WrapMethod(T&& func, std::function<void(const Arguments&)>&& ref_func) {
-  auto holder = internal::CallbackHolderFactory<T>::Create(std::move(func));
+  auto holder = internal::CallbackHolderFactory<T>::Create(
+      std::move(func), FunctionArgumentIsWeakRef);
   return [holder = std::move(holder),
           ref_func = std::move(ref_func)](Arguments* args) {
     using RunType = typename internal::CallbackHolderFactory<T>::RunType;

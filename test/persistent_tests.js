@@ -1,6 +1,4 @@
-const {gcUntil} = require('./util')
-
-exports.runTests = async (assert, binding) => {
+exports.runTests = async (assert, binding, {gcUntil}) => {
   const {PersistentMap} = binding
   const map = new PersistentMap
 

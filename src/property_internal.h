@@ -28,8 +28,8 @@ template<typename T, CallbackType type, typename Enable = void>
 struct PropertyMethodHolderFactory {
   using RunType = typename CallbackHolderFactory<T>::RunType;
   using HolderT = PropertyMethodHolder<RunType, type>;
-  static inline HolderT Create(T func) {
-    return HolderT(CallbackHolderFactory<T>::Create(std::move(func)));
+  static inline HolderT Create(T func, int flags) {
+    return HolderT(CallbackHolderFactory<T>::Create(std::move(func), flags));
   }
 };
 
@@ -42,12 +42,12 @@ struct PropertyMethodHolderFactory<T, CallbackType::Getter,
   using MemberType = typename ExtractMemberPointer<T>::MemberType;
   using RunType = MemberType(ClassType*);
   using HolderT = PropertyMethodHolder<RunType, CallbackType::Getter>;
-  static inline HolderT Create(T member_ptr) {
+  static inline HolderT Create(T member_ptr, int flags) {
     std::function<RunType> func = [member_ptr](ClassType* p) {
       return p->*member_ptr;
     };
     return HolderT(CallbackHolderFactory<decltype(func)>::Create(
-        std::move(func), HolderIsFirstArgument));
+        std::move(func), HolderIsFirstArgument | flags));
   }
 };
 
@@ -60,12 +60,12 @@ struct PropertyMethodHolderFactory<T, CallbackType::Setter,
   using MemberType = typename ExtractMemberPointer<T>::MemberType;
   using RunType = void(ClassType*, MemberType);
   using HolderT = PropertyMethodHolder<RunType, CallbackType::Setter>;
-  static inline HolderT Create(T member_ptr) {
+  static inline HolderT Create(T member_ptr, int flags) {
     std::function<RunType> func = [member_ptr](ClassType* p, MemberType m) {
       p->*member_ptr = std::move(m);
     };
     return HolderT(CallbackHolderFactory<decltype(func)>::Create(
-        std::move(func), HolderIsFirstArgument));
+        std::move(func), HolderIsFirstArgument | flags));
   }
 };
 

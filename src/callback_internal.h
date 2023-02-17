@@ -15,6 +15,13 @@
 
 namespace ki {
 
+enum CallbackConvertionFlags {
+  // The |this| object should be passed as first argument.
+  HolderIsFirstArgument = 1 << 0,
+  // Function passed in the arguments only hold weak reference.
+  FunctionArgumentIsWeakRef = 1 << 1,
+};
+
 namespace internal {
 
 // Deduce the proper type for callback parameters.
@@ -44,19 +51,25 @@ struct IsFunctionConversionSupported
           std::is_function<T>::value ||
           std::is_member_function_pointer<T>::value> {};
 
-// Flag to indicate the |this| object should be passed as first argument.
-enum CreateFunctionTemplateFlags {
-  HolderIsFirstArgument = 1 << 0,
-};
-
 // Helper to read C++ args from JS args.
 template<typename T>
-bool GetNextArgument(Arguments* args, int flags, bool is_first, T* result) {
+inline bool GetNextArgument(Arguments* args, int flags, bool is_first,
+                            T* result) {
   if (is_first && (flags & HolderIsFirstArgument) != 0) {
     return args->GetThis(result);
   } else {
     return args->GetNext(result);
   }
+}
+
+// Implementation of the FunctionArgumentIsWeakRef flag.
+template<typename Sig>
+inline bool GetNextArgument(Arguments* args, int flags, bool is_first,
+                            std::function<Sig>* result) {
+  if ((flags & FunctionArgumentIsWeakRef) != 0)
+    return args->GetNextWeakFunction(result);
+  else
+    return args->GetNext(result);
 }
 
 // For advanced use cases, we allow callers to request the unparsed Arguments
@@ -136,8 +149,8 @@ struct CallbackHolderFactory<T, typename std::enable_if<
                                         T>::value>::type> {
   using RunType = typename FunctorTraits<T>::RunType;
   using HolderT = CallbackHolder<RunType>;
-  static inline HolderT Create(T func) {
-    return HolderT{std::function<RunType>(func), HolderIsFirstArgument};
+  static inline HolderT Create(T func, int flags = 0) {
+    return HolderT{std::function<RunType>(func), HolderIsFirstArgument | flags};
   }
 };
 

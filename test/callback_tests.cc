@@ -36,7 +36,7 @@ class TestClass {
 std::function<void()> stored_function;
 
 void StoreWeakFunction(ki::Arguments args) {
-  ki::WeakFunctionFromNode(args.Env(), args[0], &stored_function);
+  ki::ConvertWeakFunctionFromNode(args.Env(), args[0], &stored_function);
 }
 
 void RunStoredFunction() {

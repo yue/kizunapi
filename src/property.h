@@ -10,15 +10,15 @@
 namespace ki {
 
 template<typename T>
-inline auto Getter(T func) {
+inline auto Getter(T func, int flags = 0) {
   return internal::PropertyMethodHolderFactory<
-             T, internal::CallbackType::Getter>::Create(func);
+             T, internal::CallbackType::Getter>::Create(func, flags);
 }
 
 template<typename T>
-inline auto Setter(T func) {
+inline auto Setter(T func, int flags = 0) {
   return internal::PropertyMethodHolderFactory<
-             T, internal::CallbackType::Setter>::Create(func);
+             T, internal::CallbackType::Setter>::Create(func, flags);
 }
 
 // Defines a JS property with native methods.

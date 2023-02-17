@@ -1,6 +1,4 @@
-const {gcUntil} = require('./util')
-
-exports.runTests = async (assert, binding) => {
+exports.runTests = async (assert, binding, {runInNewScope, gcUntil, addFinalizer}) => {
   assert.equal(binding.value, 'value',
                'Property value')
   delete binding.value
@@ -13,6 +11,16 @@ exports.runTests = async (assert, binding) => {
   delete binding.number
   assert.equal(binding.number, 90,
                'Property setter defaults to not configurable')
+
+  let callbackCollected
+  runInNewScope(() => {
+    const callback = () => {}
+    binding.member.callback = callback
+    addFinalizer(callback, () => callbackCollected = true)
+  })
+  await gcUntil(() => callbackCollected)
+  assert.equal(callbackCollected, true,
+               'Property setter converts callback to weak function')
 
   const {member} = binding
   assert.equal(member.getter, 89,

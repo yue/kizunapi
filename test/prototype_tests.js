@@ -1,6 +1,4 @@
-const {runInNewScope, gcUntil} = require('./util')
-
-exports.runTests = async (assert, binding, {addFinalizer}) => {
+exports.runTests = async (assert, binding, {runInNewScope, gcUntil, addFinalizer}) => {
   const {SimpleClass} = binding
   assert.throws(() => { new SimpleClass },
                 {

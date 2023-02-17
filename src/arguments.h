@@ -76,6 +76,17 @@ class Arguments {
     return FromNode(env_, argv_[next_++], out);
   }
 
+  // A helper to handle the cases where user wants to store a weak function
+  // passed via arguments.
+  template<typename Sig>
+  bool GetNextWeakFunction(std::function<Sig>* out) {
+    napi_value value;
+    if (!GetNext(&value))
+      return false;
+    return Type<std::function<Sig>>::FromNode(
+        env_, value, out, 0 /* ref_count */) == napi_ok;
+  }
+
   template<typename T>
   bool GetThis(T* out) const {
     return FromNode(env_, this_, out);

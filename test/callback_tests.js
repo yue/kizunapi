@@ -1,6 +1,4 @@
-const {runInNewScope, gcUntil} = require('./util')
-
-exports.runTests = async (assert, binding, {addFinalizer}) => {
+exports.runTests = async (assert, binding, {runInNewScope, gcUntil, addFinalizer}) => {
   assert.deepStrictEqual(binding.returnVoid(), undefined,
                          'Callback void return value converts to undefined')
   assert.equal(binding.addOne(123), 124, 'Callback convert arg from js')

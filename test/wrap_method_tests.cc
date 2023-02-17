@@ -69,7 +69,10 @@ struct Type<View> {
         WrapMethod(&View::RemoveChildView, [](const Arguments& args) {
           AttachedTable(args).Delete(args[0]);
         }),
-        "addEventListener", &View::AddEventListener);
+        "addEventListener",
+        WrapMethod(&View::AddEventListener, [](const Arguments& args) {
+          // Do nothing to verify callback is not strong referenced.
+        }));
   }
 };
 

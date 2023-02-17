@@ -1,6 +1,4 @@
-const {runInNewScope, gcUntil} = require('./util')
-
-exports.runTests = async (assert, binding, {addFinalizer, getAttachedTable}) => {
+exports.runTests = async (assert, binding, {runInNewScope, gcUntil, addFinalizer}) => {
   const {View} = binding
 
   await runInNewScope(async () => {
@@ -18,17 +16,16 @@ exports.runTests = async (assert, binding, {addFinalizer, getAttachedTable}) => 
   })
 
   await runInNewScope(async () => {
-    let viewCollected, listenerCollected
+    const view = new View
+    let listenerCollected
     runInNewScope(() => {
-      const view = new View
       const listener = () => {}
       view.addEventListener(listener)
-      addFinalizer(view, () => viewCollected = true)
       addFinalizer(listener, () => listenerCollected = true)
     })
     await gcUntil(() => listenerCollected)
-    assert.equal(viewCollected && listenerCollected, true,
-                 'WrapMethod object with callback get GCed')
+    assert.equal(listenerCollected, true,
+                 'WrapMethod converts callback to weak function')
   })
 
   await runInNewScope(async () => {

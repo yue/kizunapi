@@ -17,6 +17,7 @@ void Setter(int n) {
 
 struct SimpleMember {
   int data = 89;
+  std::function<void()> callback;
 };
 
 struct HasObjectMember {
@@ -35,7 +36,9 @@ struct Type<SimpleMember> {
     DefineProperties(env, prototype,
                      Property("getter", Getter(&SimpleMember::data)),
                      Property("setter", Setter(&SimpleMember::data)),
-                     Property("data", &SimpleMember::data));
+                     Property("data", &SimpleMember::data),
+                     Property("callback", Setter(&SimpleMember::callback,
+                                                 FunctionArgumentIsWeakRef)));
   }
 };
 
