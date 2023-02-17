@@ -12,6 +12,10 @@ int AddOne(int input) {
   return input + 1;
 }
 
+std::string Append64(std::function<std::string()> callback) {
+  return callback() + "64";
+}
+
 class TestClass {
  public:
   explicit TestClass(int data) : data(data) {
@@ -29,8 +33,18 @@ class TestClass {
   int data;
 };
 
-std::string Append64(std::function<std::string()> callback) {
-  return callback() + "64";
+std::function<void()> stored_function;
+
+void StoreWeakFunction(ki::Arguments args) {
+  ki::WeakFunctionFromNode(args.Env(), args[0], &stored_function);
+}
+
+void RunStoredFunction() {
+  stored_function();
+}
+
+void ClearStoredFunction() {
+  stored_function = nullptr;
 }
 
 }  // namespace
@@ -56,12 +70,15 @@ struct Type<TestClass*> {
 
 void run_callback_tests(napi_env env, napi_value binding) {
   ki::Set(env, binding, "returnVoid", &ReturnVoid,
-                        "addOne", &AddOne);
+                        "addOne", &AddOne,
+                        "append64", &Append64);
 
   TestClass* object = new TestClass(8963);
   ki::Set(env, binding, "object", object,
                         "method", &TestClass::Method,
                         "data", &TestClass::Data);
 
-  ki::Set(env, binding, "append64", &Append64);
+  ki::Set(env, binding, "storeWeakFunction", &StoreWeakFunction,
+                        "runStoredFunction", &RunStoredFunction,
+                        "clearStoredFunction", &ClearStoredFunction);
 }

@@ -85,8 +85,7 @@ class Persistent {
 
   napi_value Value() const {
     napi_value result = nullptr;
-    napi_status s = napi_get_reference_value(env_, ref_, &result);
-    assert(s == napi_ok);
+    napi_get_reference_value(env_, ref_, &result);
     return result;
   }
 
