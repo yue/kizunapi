@@ -254,6 +254,42 @@ struct Type<SymbolHolder<n>> {
   }
 };
 
+// Some builtin types.
+inline napi_value Global(napi_env env) {
+  napi_value result;
+  napi_status s = napi_get_global(env, &result);
+  assert(s == napi_ok);
+  return result;
+}
+
+inline napi_value Undefined(napi_env env) {
+  napi_value result;
+  napi_status s = napi_get_undefined(env, &result);
+  assert(s == napi_ok);
+  return result;
+}
+
+inline napi_value Null(napi_env env) {
+  napi_value result;
+  napi_status s = napi_get_null(env, &result);
+  assert(s == napi_ok);
+  return result;
+}
+
+// Object helpers.
+inline napi_value CreateObject(napi_env env) {
+  napi_value value = nullptr;
+  napi_status s = napi_create_object(env, &value);
+  assert(s == napi_ok);
+  return value;
+}
+
+inline bool IsObject(napi_env env, napi_value object) {
+  napi_valuetype type;
+  napi_status s = napi_typeof(env, object, &type);
+  return s == napi_ok && (type == napi_object || type == napi_function);
+}
+
 // Function helpers.
 template<typename T>
 inline napi_status ConvertToNode(napi_env env, const T& value,
@@ -290,11 +326,9 @@ template<typename Out, typename In>
 inline napi_value ConvertIgnoringStatus(napi_env env, In value) {
   napi_value result = nullptr;
   napi_status s = Type<Out>::ToNode(env, value, &result);
-  if (s != napi_ok) {
-    // Return undefined on error.
-    s = napi_get_undefined(env, &result);
-    assert(s == napi_ok);
-  }
+  // Return undefined on error.
+  if (s != napi_ok)
+    return Undefined(env);
   return result;
 }
 
@@ -321,20 +355,6 @@ inline napi_value ToNode(napi_env env, const char (&value)[n]) {
 template<size_t n>
 inline napi_value ToNode(napi_env env, const char16_t (&value)[n]) {
   return ConvertIgnoringStatus<char16_t[n]>(env, value);
-}
-
-// Object helpers.
-inline napi_value CreateObject(napi_env env) {
-  napi_value value = nullptr;
-  napi_status s = napi_create_object(env, &value);
-  assert(s == napi_ok);
-  return value;
-}
-
-inline bool IsObject(napi_env env, napi_value object) {
-  napi_valuetype type;
-  napi_status s = napi_typeof(env, object, &type);
-  return s == napi_ok && (type == napi_object || type == napi_function);
 }
 
 // Define converters for some frequently used types.
