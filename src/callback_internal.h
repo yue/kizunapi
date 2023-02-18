@@ -199,27 +199,28 @@ struct CallbackInvoker {};
 template<typename ReturnType, typename... ArgTypes>
 struct CallbackInvoker<ReturnType(ArgTypes...)> {
   using HolderT = CallbackHolder<ReturnType(ArgTypes...)>;
-  static inline ReturnType Invoke(napi_env env, napi_callback_info info) {
+  using ReturnLocalType = typename std::decay<ReturnType>::type;
+  static inline ReturnLocalType Invoke(napi_env env, napi_callback_info info) {
     Arguments args(env, info);
     return Invoke(&args);
   }
-  static inline ReturnType Invoke(napi_env env, napi_callback_info info,
-                                  const HolderT* holder) {
+  static inline ReturnLocalType Invoke(napi_env env, napi_callback_info info,
+                                       const HolderT* holder) {
     Arguments args(env, info);
     return Invoke(&args, holder);
   }
-  static inline ReturnType Invoke(Arguments* args) {
+  static inline ReturnLocalType Invoke(Arguments* args) {
     return Invoke(args, static_cast<HolderT*>(args->Data()));
   }
-  static inline ReturnType Invoke(Arguments* args,
-                                  const HolderT* holder,
-                                  bool* success = nullptr) {
+  static inline ReturnLocalType Invoke(Arguments* args,
+                                       const HolderT* holder,
+                                       bool* success = nullptr) {
     using Indices = typename IndicesGenerator<sizeof...(ArgTypes)>::type;
     Invoker<Indices, ArgTypes...> invoker(args, holder->flags);
     if (!invoker.IsOK()) {
       if (success)
         *success = false;
-      return ReturnType();
+      return ReturnLocalType();
     }
     if (success)
       *success = true;
@@ -247,22 +248,20 @@ struct ReturnToNode {
 
 template<typename... ArgTypes>
 struct ReturnToNode<void(ArgTypes...)> {
-  using RunType = void(ArgTypes...);
+  using Sig = void(ArgTypes...);
   static napi_value Invoke(napi_env env, napi_callback_info info) {
-    CallbackInvoker<RunType>::Invoke(env, info);
+    CallbackInvoker<Sig>::Invoke(env, info);
     return nullptr;
   }
   static napi_value InvokeWithHolder(napi_env env, napi_callback_info info,
-                                     const CallbackHolder<RunType>* holder) {
-    CallbackInvoker<RunType>::Invoke(env, info, holder);
+                                     const CallbackHolder<Sig>* holder) {
+    CallbackInvoker<Sig>::Invoke(env, info, holder);
     return nullptr;
   }
   static napi_value InvokeWithHolder(Arguments* args,
-                                     const CallbackHolder<RunType>* holder,
-                                     bool* success) {
-    if (success)
-      *success = true;
-    CallbackInvoker<RunType>::Invoke(args, holder);
+                                     const CallbackHolder<Sig>* holder,
+                                     bool* success = nullptr) {
+    CallbackInvoker<Sig>::Invoke(args, holder, success);
     return nullptr;
   }
 };
