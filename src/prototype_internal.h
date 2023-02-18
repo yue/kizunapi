@@ -279,12 +279,12 @@ struct InheritanceChain {
 
 template<typename T>
 struct InheritanceChain<T, typename std::enable_if<std::is_class<
-                               typename Type<T>::base>::value>::type> {
+                               typename Type<T>::Base>::value>::type> {
   static napi_value Get(napi_env env) {
     napi_value constructor;
     if (!GetOrCreateConstructor<T>(env, &constructor)) {
       // Inherit from base type's constructor.
-      napi_value parent = InheritanceChain<typename Type<T>::base>::Get(env);
+      napi_value parent = InheritanceChain<typename Type<T>::Base>::Get(env);
       Inherit(env, constructor, parent);
     }
     return constructor;

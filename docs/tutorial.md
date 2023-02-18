@@ -310,7 +310,7 @@ ki::Property("date", napi_writable | napi_enumerable, ki::ToNode(env, 8964));
 
 ### Inheritance
 
-By specifying `ki::Type<T>::base`, you can hint the inheritance relationship to
+By specifying `ki::Type<T>::Base`, you can hint the inheritance relationship to
 kizunapi and the generated JavaScript classes will do prototype inheritance
 automatically:
 
@@ -322,7 +322,7 @@ struct Type<Parent> {
 
 template<>
 struct Type<Child> {
-  using base = Parent;
+  using Base = Parent;
   ...
 };
 ```

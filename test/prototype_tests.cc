@@ -190,7 +190,7 @@ struct Type<Parent> {
 
 template<>
 struct Type<Child> {
-  using base = Parent;
+  using Base = Parent;
   static constexpr const char* name = "Child";
   static Child* Constructor() {
     return new Child();

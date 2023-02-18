@@ -85,7 +85,7 @@ struct Type<Parent> {
 
 template<>
 struct Type<Child> {
-  using base = Parent;
+  using Base = Parent;
   static constexpr const char* name = "Child";
   static Child* Constructor(int month, int day) {
     return new Child(month, day);
