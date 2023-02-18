@@ -8,11 +8,28 @@
 
 namespace ki {
 
+namespace internal {
+
+inline void RunRefFunc(const std::function<void(Arguments)>& func,
+                       Arguments args,
+                       napi_value ret) {
+  func(std::move(args));
+}
+
+inline void RunRefFunc(const std::function<void(Arguments, napi_value)>& func,
+                       Arguments args,
+                       napi_value ret) {
+  func(std::move(args), ret);
+}
+
+}  // namespace internal
+
 template<typename T,
+         typename W,
          typename = typename std::enable_if<
              internal::IsFunctionConversionSupported<T>::value>::type>
-std::function<napi_value(Arguments)>
-WrapMethod(T&& func, std::function<void(Arguments)>&& ref_func) {
+inline std::function<napi_value(Arguments)>
+WrapMethod(T&& func, W&& ref_func) {
   auto holder = internal::CallbackHolderFactory<T>::Create(
       std::move(func), FunctionArgumentIsWeakRef);
   return [holder = std::move(holder),
@@ -22,7 +39,7 @@ WrapMethod(T&& func, std::function<void(Arguments)>&& ref_func) {
     bool success = false;
     napi_value ret = Runner::InvokeWithHolder(&args, &holder, &success);
     if (success)
-      ref_func(std::move(args));
+      internal::RunRefFunc(ref_func, std::move(args), ret);
     return ret;
   };
 }
