@@ -26,12 +26,12 @@ class Map : public Local {
   explicit Map(napi_env env) : Map(env, "Map") {}
 
   template<typename K, typename V>
-  void Set(K&& key, V&& value) {
+  void Set(const K& key, const V& value) {
     CallMethod(Env(), Value(), "set", ToNode(Env(), key), ToNode(Env(), value));
   }
 
   template<typename K, typename V>
-  bool Get(K&& key, V* out) {
+  bool Get(const K& key, V* out) const {
     napi_value ret = CallMethod(Env(), Value(), "get", ToNode(Env(), key));
     if (!ret || !IsObject(Env(), ret))  // get returns null for unexist key
       return false;
@@ -39,7 +39,17 @@ class Map : public Local {
   }
 
   template<typename K>
-  void Delete(K&& key) {
+  bool Has(const K& key) const {
+    napi_value ret = CallMethod(Env(), Value(), "has", ToNode(Env(), key));
+    if (!ret)
+      return false;
+    bool result = false;
+    napi_get_value_bool(Env(), Value(), &result);
+    return result;
+  }
+
+  template<typename K>
+  void Delete(const K& key) {
     CallMethod(Env(), Value(), "delete", ToNode(Env(), key));
   }
 

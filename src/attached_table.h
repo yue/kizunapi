@@ -16,6 +16,16 @@ class AttachedTable : public Map {
       : Map(InstanceData::Get(env)->GetOrCreateAttachedTable(object)) {}
   explicit AttachedTable(const Arguments& args)
       : AttachedTable(args.Env(), args.This()) {}
+
+  template<typename K>
+  Map GetOrCreateMap(const K& key) {
+    napi_value ret;
+    if (!Get(key, &ret)) {
+      ret = Map(Env()).Value();
+      Set(key, ret);
+    }
+    return Map(Env(), ret);
+  }
 };
 
 }  // namespace ki

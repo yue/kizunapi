@@ -75,7 +75,8 @@ struct Wrap<T, typename std::enable_if<is_function_pointer<
   static inline auto* Do(T* ptr) {
     auto* ret = TypeBridge<T>::Wrap(ptr);
     static_assert(std::is_same<decltype(ret), T*>::value || HasUnwrap<T>::value,
-                  "Type<T>::Unwrap must be defined if Wrap does not return T*");
+                  "TypeBridge<T>::Unwrap must be defined if Wrap does not "
+                  "return T*");
     return ret;
   }
 };
@@ -176,7 +177,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
   static napi_status Do(napi_env env, napi_value* result) {
     static_assert(HasFinalize<T>::value || HasDestructor<T>::value,
                   "A type that has Type<T>::Constructor defined must also have "
-                  "Type<T>::Constructor or Type<T>::Finalize defined.");
+                  "Type<T>::Destructor or TypeBridge<T>::Finalize defined.");
     auto holder = std::make_unique<HolderT>(&Type<T>::Constructor);
     napi_value constructor;
     napi_status s = napi_define_class(env, Type<T>::name, NAPI_AUTO_LENGTH,
