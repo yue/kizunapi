@@ -11,18 +11,18 @@ namespace ki {
 template<typename T,
          typename = typename std::enable_if<
              internal::IsFunctionConversionSupported<T>::value>::type>
-std::function<napi_value(Arguments*)>
-WrapMethod(T&& func, std::function<void(const Arguments&)>&& ref_func) {
+std::function<napi_value(Arguments)>
+WrapMethod(T&& func, std::function<void(Arguments)>&& ref_func) {
   auto holder = internal::CallbackHolderFactory<T>::Create(
       std::move(func), FunctionArgumentIsWeakRef);
   return [holder = std::move(holder),
-          ref_func = std::move(ref_func)](Arguments* args) {
+          ref_func = std::move(ref_func)](Arguments args) {
     using RunType = typename internal::CallbackHolderFactory<T>::RunType;
     using Runner = internal::ReturnToNode<RunType>;
     bool success = false;
-    napi_value ret = Runner::InvokeWithHolder(args, &holder, &success);
+    napi_value ret = Runner::InvokeWithHolder(&args, &holder, &success);
     if (success)
-      ref_func(*args);
+      ref_func(std::move(args));
     return ret;
   };
 }

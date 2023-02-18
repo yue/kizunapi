@@ -62,15 +62,15 @@ struct Type<View> {
     Set(env, prototype,
         "doNothingWithView", &View::DoNothingWithView,
         "addChildView",
-        WrapMethod(&View::AddChildView, [](const Arguments& args) {
+        WrapMethod(&View::AddChildView, [](Arguments args) {
           AttachedTable(args).Set(args[0], true);
         }),
         "removeChildView",
-        WrapMethod(&View::RemoveChildView, [](const Arguments& args) {
+        WrapMethod(&View::RemoveChildView, [](Arguments args) {
           AttachedTable(args).Delete(args[0]);
         }),
         "addEventListener",
-        WrapMethod(&View::AddEventListener, [](const Arguments& args) {
+        WrapMethod(&View::AddEventListener, [](Arguments args) {
           // Do nothing to verify callback is not strong referenced.
         }));
   }
