@@ -57,6 +57,12 @@ class InstanceData {
     strong_refs_.erase(key);
   }
 
+  // In C++ the address of a class's first member data is equivalent to the
+  // address of the class itself, so 1 pointer can actually represent 2
+  // different instances. To avoid duplicate key for different instances, we
+  // also include typename as part of the key.
+  using WeakRefKey = std::pair<const char*, void*>;
+
   // The garbage collection in V8 has 2 phases:
   // 1. Garbage collect the unused object, which makes the object stored in
   //    weak ref become undefined;
@@ -76,7 +82,7 @@ class InstanceData {
   // 1. In AddWeakRef, if there is a weak ref with |key|, add ref count, and
   //    replace the weak ref with the ref to current value.
   // 2. In DeleteWeakRef, only remove the whole |key| when ref count drops to 0.
-  void AddWeakRef(void* key, napi_value value) {
+  void AddWeakRef(WeakRefKey key, napi_value value) {
     auto it = weak_refs_.find(key);
     if (it != weak_refs_.end()) {
       it->second.first++;
@@ -86,7 +92,7 @@ class InstanceData {
     }
   }
 
-  bool GetWeakRef(void* key, napi_value* out) const {
+  bool GetWeakRef(WeakRefKey key, napi_value* out) const {
     auto it = weak_refs_.find(key);
     if (it == weak_refs_.end())
       return false;
@@ -100,7 +106,7 @@ class InstanceData {
     return true;
   }
 
-  void DeleteWeakRef(void* key) {
+  void DeleteWeakRef(WeakRefKey key) {
     auto it = weak_refs_.find(key);
     if (it == weak_refs_.end()) {
       assert(false);
@@ -118,7 +124,7 @@ class InstanceData {
   napi_env env_;
   Persistent attached_tables_;
   std::map<void*, Persistent> strong_refs_;
-  std::map<void*, std::pair<uint32_t, Persistent>> weak_refs_;
+  std::map<WeakRefKey, std::pair<uint32_t, Persistent>> weak_refs_;
 
   const int tag_ = 0x8964;
 };

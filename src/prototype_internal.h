@@ -213,7 +213,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     using DataType = decltype(data);
     napi_status s = napi_wrap(env, args.This(), data,
                               [](napi_env env, void* data, void* ptr) {
-      InstanceData::Get(env)->DeleteWeakRef(ptr);
+      InstanceData::Get(env)->DeleteWeakRef({Type<T>::name, ptr});
       Finalize<T>::Do(static_cast<DataType>(data));
       Destruct<T>::Do(static_cast<T*>(ptr));
     }, ptr, nullptr);
@@ -223,7 +223,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
       napi_throw_error(env, nullptr, "Unable to wrap native object.");
     }
     // Save weak reference.
-    InstanceData::Get(env)->AddWeakRef(ptr, args.This());
+    InstanceData::Get(env)->AddWeakRef({Type<T>::name, ptr}, args.This());
     return nullptr;
   }
 };

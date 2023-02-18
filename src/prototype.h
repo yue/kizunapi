@@ -33,11 +33,12 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
   static inline napi_status ToNode(napi_env env, T* ptr, napi_value* result) {
     static_assert(internal::HasWrap<T>::value &&
                   internal::HasFinalize<T>::value,
-                  "Converting pointer to JavaScript requires Type<T>::Wrap "
-                  "and Type<T>::Finalize being defined.");
+                  "Converting pointer to JavaScript requires "
+                  "TypeBridge<T>::Wrap and TypeBridge<T>::Finalize being "
+                  "defined.");
     // Check if there is already a JS object created.
     InstanceData* instance_data = InstanceData::Get(env);
-    if (instance_data->GetWeakRef(ptr, result))
+    if (instance_data->GetWeakRef({name, ptr}, result))
       return napi_ok;
     // Pass an External to indicate it is called from native code.
     napi_value external;
@@ -55,7 +56,7 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
     auto* data = internal::Wrap<T>::Do(ptr);
     using DataType = decltype(data);
     s = napi_wrap(env, object, data, [](napi_env env, void* data, void* ptr) {
-      InstanceData::Get(env)->DeleteWeakRef(ptr);
+      InstanceData::Get(env)->DeleteWeakRef({name, ptr});
       internal::Finalize<T>::Do(static_cast<DataType>(data));
     }, ptr, nullptr);
     if (s != napi_ok) {
@@ -63,7 +64,7 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
       return s;
     }
     // Save weak reference.
-    instance_data->AddWeakRef(ptr, object);
+    instance_data->AddWeakRef({name, ptr}, object);
     *result = object;
     return napi_ok;
   }
