@@ -318,10 +318,11 @@ struct V8FunctionInvoker<void(ArgTypes...)> {
     std::vector<napi_value> args = {
         ToNode(env, std::forward<ArgTypes>(raw))...
     };
-    napi_status s = napi_make_callback(env, callback_scope.context(), func,
-                                       func, args.size(),
-                                       args.empty() ? nullptr: &args.front(),
-                                       nullptr);
+#if V8_MAJOR_VERSION > 8
+    napi_status s =
+#endif
+    napi_make_callback(env, callback_scope.context(), func, func, args.size(),
+                       args.empty() ? nullptr: &args.front(), nullptr);
 #if V8_MAJOR_VERSION > 8
     // Executing callback on exit results in error on Node 14.
     assert(s == napi_ok || s == napi_pending_exception);

@@ -38,9 +38,9 @@ inline napi_status ConvertWeakFunctionFromNode(
   if (type != napi_function)
     return napi_function_expected;
   Persistent handle(env, value, ref_count);
-  *out = [env, handle](ArgTypes&&... args) -> ReturnType {
+  *out = [env, handle = std::move(handle)](ArgTypes&&... args) -> ReturnType {
     return internal::V8FunctionInvoker<ReturnType(ArgTypes...)>::Go(
-        env, handle, std::forward<ArgTypes>(args)...);
+        env, std::move(handle), std::forward<ArgTypes>(args)...);
   };
   return napi_ok;
 }
