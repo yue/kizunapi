@@ -7,8 +7,11 @@
 #include <assert.h>
 #include <node_api.h>
 
-#include <vector>
+#include <map>
+#include <set>
 #include <string>
+#include <tuple>
+#include <vector>
 
 #include "src/template_util.h"
 
@@ -183,6 +186,16 @@ struct Type<std::u16string> {
 };
 
 template<>
+struct Type<const char*> {
+  static constexpr const char* name = "String";
+  static inline napi_status ToNode(napi_env env,
+                                   const char* value,
+                                   napi_value* result) {
+    return napi_create_string_utf8(env, value, NAPI_AUTO_LENGTH, result);
+  }
+};
+
+template<>
 struct Type<char*> {
   static constexpr const char* name = "String";
   static inline napi_status ToNode(napi_env env,
@@ -199,6 +212,16 @@ struct Type<char[n]> {
                                    const char* value,
                                    napi_value* result) {
     return napi_create_string_utf8(env, value, n - 1, result);
+  }
+};
+
+template<>
+struct Type<const char16_t*> {
+  static constexpr const char* name = "String";
+  static inline napi_status ToNode(napi_env env,
+                                   const char16_t* value,
+                                   napi_value* result) {
+    return napi_create_string_utf16(env, value, NAPI_AUTO_LENGTH, result);
   }
 };
 
@@ -284,10 +307,16 @@ inline napi_value CreateObject(napi_env env) {
   return value;
 }
 
-inline bool IsObject(napi_env env, napi_value object) {
+inline bool IsArray(napi_env env, napi_value value) {
+  bool result = false;
+  napi_is_array(env, value, &result);
+  return result;
+}
+
+inline bool IsType(napi_env env, napi_value value, napi_valuetype target) {
   napi_valuetype type;
-  napi_status s = napi_typeof(env, object, &type);
-  return s == napi_ok && (type == napi_object || type == napi_function);
+  napi_status s = napi_typeof(env, value, &type);
+  return s == napi_ok && type == target;
 }
 
 // Function helpers.
@@ -323,9 +352,9 @@ inline napi_status ConvertToNode(napi_env env, const char16_t (&value)[n],
 
 // Convert from In to Out and ignore error.
 template<typename Out, typename In>
-inline napi_value ConvertIgnoringStatus(napi_env env, In value) {
+inline napi_value ConvertIgnoringStatus(napi_env env, In&& value) {
   napi_value result = nullptr;
-  napi_status s = Type<Out>::ToNode(env, value, &result);
+  napi_status s = Type<Out>::ToNode(env, std::forward<In>(value), &result);
   // Return undefined on error.
   if (s != napi_ok)
     return Undefined(env);
@@ -357,49 +386,185 @@ inline napi_value ToNode(napi_env env, const char16_t (&value)[n]) {
   return ConvertIgnoringStatus<char16_t[n]>(env, value);
 }
 
+// Convert from node and ignore errors.
+template<typename T>
+inline T FromNodeTo(napi_env env, napi_value value) {
+  T result{};
+  FromNode(env, value, &result);
+  return result;
+}
+
+struct DeduceFromNode {
+  DeduceFromNode(napi_env env, napi_value value) : env(env), value(value) {}
+
+  template<typename T>
+  operator T() { return FromNodeTo<T>(env, value); }
+
+  napi_env env;
+  napi_value value;
+};
+
 // Define converters for some frequently used types.
 template<typename T>
 struct Type<std::vector<T>> {
   static constexpr const char* name = "Array";
-  static inline napi_status ToNode(napi_env env,
-                                   const std::vector<T>& vec,
-                                   napi_value* result) {
+  static napi_status ToNode(napi_env env,
+                            const std::vector<T>& vec,
+                            napi_value* result) {
     napi_status s = napi_create_array_with_length(env, vec.size(), result);
-    if (s != napi_ok)
-      return s;
+    if (s != napi_ok) return s;
     for (size_t i = 0; i < vec.size(); ++i) {
       napi_value el;
       s = ConvertToNode(env, vec[i], &el);
-      if (s != napi_ok)
-        return s;
-      napi_set_element(env, *result, i, el);
+      if (s != napi_ok) return s;
+      s = napi_set_element(env, *result, i, el);
+      if (s != napi_ok) return s;
     }
     return napi_ok;
   }
   static napi_status FromNode(napi_env env,
                               napi_value value,
                               std::vector<T>* out) {
-    bool is_array;
-    napi_status s = napi_is_array(env, value, &is_array);
-    if (s != napi_ok)
-      return s;
-    if (!is_array)
+    if (!IsArray(env, value))
       return napi_array_expected;
     uint32_t length;
-    s = napi_get_array_length(env, value, &length);
-    if (s != napi_ok)
-      return s;
+    napi_status s = napi_get_array_length(env, value, &length);
+    if (s != napi_ok) return s;
     out->resize(length);
     for (uint32_t i = 0; i < length; ++i) {
       napi_value el = nullptr;
       s = napi_get_element(env, value, i, &el);
-      if (s != napi_ok)
-        return s;
+      if (s != napi_ok) return s;
       s = Type<T>::FromNode(env, el, &(*out)[i]);
-      if (s != napi_ok)
-        return s;
+      if (s != napi_ok) return s;
     }
     return napi_ok;
+  }
+};
+
+template<typename T>
+struct Type<std::set<T>> {
+  static constexpr const char* name = "Array";
+  static napi_status ToNode(napi_env env,
+                            const std::set<T>& vec,
+                            napi_value* result) {
+    napi_status s = napi_create_array_with_length(env, vec.size(), result);
+    if (s != napi_ok) return s;
+    int i = 0;
+    for (const auto& element : vec) {
+      napi_value el;
+      s = ConvertToNode(env, element, &el);
+      if (s != napi_ok) return s;
+      s = napi_set_element(env, *result, i++, el);
+      if (s != napi_ok) return s;
+    }
+    return napi_ok;
+  }
+  static napi_status FromNode(napi_env env,
+                              napi_value value,
+                              std::set<T>* out) {
+    if (!IsArray(env, value))
+      return napi_array_expected;
+    uint32_t length;
+    napi_status s = napi_get_array_length(env, value, &length);
+    if (s != napi_ok) return s;
+    for (uint32_t i = 0; i < length; ++i) {
+      napi_value el;
+      s = napi_get_element(env, value, i, &el);
+      if (s != napi_ok) return s;
+      T element;
+      s = Type<T>::FromNode(env, el, &element);
+      if (s != napi_ok) return s;
+      out->insert(std::move(element));
+    }
+    return napi_ok;
+  }
+};
+
+template<typename K, typename V>
+struct Type<std::map<K, V>> {
+  static constexpr const char* name = "Object";
+  static napi_status ToNode(napi_env env,
+                            const std::map<K, V>& dict,
+                            napi_value* result) {
+    napi_status s = napi_create_object(env, result);
+    if (s == napi_ok) {
+      for (const auto& it : dict) {
+        napi_value key, value;
+        s = ConvertToNode(env, it.first, &key);
+        if (s != napi_ok) break;
+        s = ConvertToNode(env, it.second, &value);
+        if (s != napi_ok) break;
+        s = napi_set_property(env, *result, key, value);
+        if (s != napi_ok) break;
+      }
+    }
+    return s;
+  }
+  static napi_status FromNode(napi_env env,
+                              napi_value object,
+                              std::map<K, V>* out) {
+    napi_value property_names;
+    napi_status s = napi_get_property_names(env, object, &property_names);
+    if (s != napi_ok) return s;
+    std::vector<napi_value> keys;
+    s = ConvertFromNode(env, property_names, &keys);
+    if (s != napi_ok) return s;
+    for (napi_value key : keys) {
+      K k;
+      s = ConvertFromNode(env, key, &k);
+      if (s != napi_ok) return s;
+      napi_value value;
+      s = napi_get_property(env, object, key, &value);
+      if (s != napi_ok) return s;
+      V v;
+      s = ConvertFromNode(env, value, &v);
+      if (s != napi_ok) return s;
+      out->emplace(std::move(k), std::move(v));
+    }
+    return napi_ok;
+  }
+};
+
+namespace internal {
+
+// Helpers used to converting tuple to Array.
+inline void SetArray(napi_env, napi_value, int) {
+}
+
+template<typename ArgType, typename... ArgTypes>
+inline void SetArray(napi_env env,
+                     napi_value arr,
+                     int i, const ArgType& arg,
+                     ArgTypes... args) {
+  if (napi_set_element(env, arr, i, ToNode(env, arg)) != napi_ok)
+    return;
+  SetArray(env, arr, i + 1, args...);
+}
+
+template<typename T, size_t... indices>
+inline void SetArray(napi_env env,
+                     napi_value arr,
+                     const T& tup,
+                     IndicesHolder<indices...>) {
+  SetArray(env, arr, 0, std::get<indices>(tup)...);
+}
+
+}  // namespace internal
+
+template<typename... ArgTypes>
+struct Type<std::tuple<ArgTypes...>> {
+  static constexpr const char* name = "Array";
+  static napi_status ToNode(napi_env env,
+                            const std::tuple<ArgTypes...>& tup,
+                            napi_value* result) {
+    constexpr size_t length = sizeof...(ArgTypes);
+    napi_value arr;
+    napi_status s = napi_create_array_with_length(env, length, &arr);
+    if (s == napi_ok)
+      SetArray(env, arr, tup,
+               typename internal::IndicesGenerator<length>::type());
+    return s;
   }
 };
 

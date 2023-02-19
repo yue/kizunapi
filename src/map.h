@@ -33,19 +33,15 @@ class Map : public Local {
   template<typename K, typename V>
   bool Get(const K& key, V* out) const {
     napi_value ret = CallMethod(Env(), Value(), "get", ToNode(Env(), key));
-    if (!ret || !IsObject(Env(), ret))  // get returns null for unexist key
+    if (!ret || IsType(Env(), ret, napi_undefined))
       return false;
     return FromNode(Env(), ret, out);
   }
 
   template<typename K>
   bool Has(const K& key) const {
-    napi_value ret = CallMethod(Env(), Value(), "has", ToNode(Env(), key));
-    if (!ret)
-      return false;
-    bool result = false;
-    napi_get_value_bool(Env(), Value(), &result);
-    return result;
+    return FromNodeTo<bool>(
+        Env(), CallMethod(Env(), Value(), "has", ToNode(Env(), key)));
   }
 
   template<typename K>
