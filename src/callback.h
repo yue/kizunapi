@@ -4,6 +4,8 @@
 #ifndef SRC_CALLBACK_H_
 #define SRC_CALLBACK_H_
 
+#include <memory>
+
 #include "src/callback_internal.h"
 
 namespace ki {
@@ -37,10 +39,13 @@ inline napi_status ConvertWeakFunctionFromNode(
   }
   if (type != napi_function)
     return napi_function_expected;
-  Persistent handle(env, value, ref_count);
-  *out = [env, handle = std::move(handle)](ArgTypes&&... args) -> ReturnType {
+  // Everything bundled with a std::function must be copiable, so we can not
+  // simply move the handle here. And we would like to avoid actually copying
+  // the Persistent because it requires a handle scope.
+  auto handle = std::make_shared<Persistent>(env, value, ref_count);
+  *out = [env, handle](ArgTypes&&... args) -> ReturnType {
     return internal::V8FunctionInvoker<ReturnType(ArgTypes...)>::Go(
-        env, std::move(handle), std::forward<ArgTypes>(args)...);
+        env, handle.get(), std::forward<ArgTypes>(args)...);
   };
   return napi_ok;
 }

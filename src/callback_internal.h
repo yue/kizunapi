@@ -5,8 +5,6 @@
 #ifndef SRC_CALLBACK_INTERNAL_H_
 #define SRC_CALLBACK_INTERNAL_H_
 
-#include <v8-version.h>
-
 #include <functional>
 
 #include "src/arguments.h"
@@ -307,10 +305,10 @@ struct V8FunctionInvoker {};
 
 template<typename... ArgTypes>
 struct V8FunctionInvoker<void(ArgTypes...)> {
-  static void Go(napi_env env, Persistent handle, ArgTypes&&... raw) {
-    CallbackScope callback_scope(env);
+  static void Go(napi_env env, Persistent* handle, ArgTypes&&... raw) {
     HandleScope handle_scope(env);
-    napi_value func = handle.Value();
+    CallbackScope callback_scope(env);
+    napi_value func = handle->Value();
     if (!func) {
       napi_throw_error(env, nullptr, "The function has been garbage collected");
       return;
@@ -318,25 +316,18 @@ struct V8FunctionInvoker<void(ArgTypes...)> {
     std::vector<napi_value> args = {
         ToNode(env, std::forward<ArgTypes>(raw))...
     };
-#if V8_MAJOR_VERSION > 8
-    napi_status s =
-#endif
     napi_make_callback(env, callback_scope.context(), func, func, args.size(),
                        args.empty() ? nullptr: &args.front(), nullptr);
-#if V8_MAJOR_VERSION > 8
-    // Executing callback on exit results in error on Node 14.
-    assert(s == napi_ok || s == napi_pending_exception);
-#endif
   }
 };
 
 template<typename ReturnType, typename... ArgTypes>
 struct V8FunctionInvoker<ReturnType(ArgTypes...)> {
-  static ReturnType Go(napi_env env, Persistent handle, ArgTypes&&... raw) {
-    CallbackScope callback_scope(env);
+  static ReturnType Go(napi_env env, Persistent* handle, ArgTypes&&... raw) {
     HandleScope handle_scope(env);
+    CallbackScope callback_scope(env);
     ReturnType ret{};
-    napi_value func = handle.Value();
+    napi_value func = handle->Value();
     if (!func) {
       napi_throw_error(env, nullptr, "The function has been garbage collected");
       return ret;
@@ -349,10 +340,6 @@ struct V8FunctionInvoker<ReturnType(ArgTypes...)> {
                                        func, args.size(),
                                        args.empty() ? nullptr: &args.front(),
                                        &value);
-#if V8_MAJOR_VERSION > 8
-    // Executing callback on exit results in error on Node 14.
-    assert(s == napi_ok || s == napi_pending_exception);
-#endif
     if (s == napi_ok)
       FromNode(env, value, &ret);
     return ret;
