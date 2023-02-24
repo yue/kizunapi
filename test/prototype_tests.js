@@ -56,6 +56,11 @@ exports.runTests = async (assert, binding, {runInNewScope, gcUntil, addFinalizer
   assert.equal(child.parentMethod(), 89,
                'Prototype child can call parent method')
 
+  const {childToParent} = binding
+  const sameChild = childToParent(child)
+  assert.ok(sameChild instanceof Child,
+            'Prototype polymorphism does not change pointer identity')
+
   const {weakFactory, WeakFactory} = binding
   weakFactory.destroy()
   assert.throws(() => { weakFactory.destroy() },

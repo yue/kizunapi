@@ -40,9 +40,10 @@ class RefCounted {
 
   void* data = nullptr;
 
- private:
+ protected:
   ~RefCounted() = default;
 
+ private:
   int count_;
 };
 
@@ -59,6 +60,10 @@ class Child : public Parent {
     return 64;
   }
 };
+
+Parent* ChildToParent(Child* child) {
+  return child;
+}
 
 template<typename T>
 class WeakPtr {
@@ -153,17 +158,6 @@ struct Type<ThrowInConstructor> {
 };
 
 template<>
-struct TypeBridge<RefCounted> {
-  static RefCounted* Wrap(RefCounted* ptr) {
-    ptr->AddRef();
-    return ptr;
-  }
-  static void Finalize(RefCounted* ptr) {
-    ptr->Release();
-  }
-};
-
-template<>
 struct Type<RefCounted> {
   static constexpr const char* name = "RefCounted";
   static RefCounted* Constructor() {
@@ -174,14 +168,23 @@ struct Type<RefCounted> {
   }
 };
 
+template<typename T>
+struct TypeBridge<T, typename std::enable_if<std::is_base_of<
+                         RefCounted, T>::value>::type> {
+  static T* Wrap(T* ptr) {
+    ptr->AddRef();
+    return ptr;
+  }
+  static void Finalize(T* ptr) {
+    ptr->Release();
+  }
+};
+
 template<>
 struct Type<Parent> {
   static constexpr const char* name = "Parent";
   static Parent* Constructor() {
     return new Parent();
-  }
-  static void Destructor(Parent* ptr) {
-    delete ptr;
   }
   static void Define(napi_env env, napi_value, napi_value prototype) {
     Set(env, prototype, "parentMethod", &Parent::ParentMethod);
@@ -195,11 +198,19 @@ struct Type<Child> {
   static Child* Constructor() {
     return new Child();
   }
-  static void Destructor(Child* ptr) {
-    delete ptr;
-  }
   static void Define(napi_env env, napi_value, napi_value prototype) {
     Set(env, prototype, "childMethod", &Child::ChildMethod);
+  }
+};
+
+template<typename T>
+struct TypeBridge<T, typename std::enable_if<std::is_base_of<
+                         Parent, T>::value>::type> {
+  static T* Wrap(T* ptr) {
+    return ptr;
+  }
+  static void Finalize(T* ptr) {
+    delete ptr;
   }
 };
 
@@ -248,6 +259,7 @@ void run_prototype_tests(napi_env env, napi_value binding) {
   ki::Set(env, binding,
           "Child", ki::Class<Child>(),
           "Parent", ki::Class<Parent>(),
+          "childToParent", &ChildToParent,
           "pointerOfParent", &PointerOf<Parent>,
           "pointerOfChild", &PointerOf<Child>);
 

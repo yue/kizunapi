@@ -227,7 +227,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     napi_status s = napi_wrap(env, args.This(), data,
                               [](napi_env env, void* data, void* ptr) {
       if (internal::CanCachePointer<T>::value)
-        InstanceData::Get(env)->DeleteWeakRef({Type<T>::name, ptr});
+        InstanceData::Get(env)->DeleteWeakRef<T>(ptr);
       Finalize<T>::Do(static_cast<DataType>(data));
       Destruct<T>::Do(static_cast<T*>(ptr));
     }, ptr, nullptr);
@@ -238,7 +238,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     }
     // Save weak reference.
     if (internal::CanCachePointer<T>::value)
-      InstanceData::Get(env)->AddWeakRef({Type<T>::name, ptr}, args.This());
+      InstanceData::Get(env)->AddWeakRef<T>(ptr, args.This());
     return nullptr;
   }
 };

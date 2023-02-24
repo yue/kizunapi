@@ -39,7 +39,7 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
     InstanceData* instance_data = InstanceData::Get(env);
     if (internal::CanCachePointer<T>::value) {
       // Check if there is already a JS object created.
-      if (instance_data->GetWeakRef({name, ptr}, result))
+      if (instance_data->GetWeakRef<T>(ptr, result))
         return napi_ok;
     }
     // Pass an External to indicate it is called from native code.
@@ -59,7 +59,7 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
     using DataType = decltype(data);
     s = napi_wrap(env, object, data, [](napi_env env, void* data, void* ptr) {
       if (internal::CanCachePointer<T>::value)
-        InstanceData::Get(env)->DeleteWeakRef({name, ptr});
+        InstanceData::Get(env)->DeleteWeakRef<T>(ptr);
       internal::Finalize<T>::Do(static_cast<DataType>(data));
     }, ptr, nullptr);
     if (s != napi_ok) {
@@ -68,7 +68,7 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
     }
     // Save weak reference.
     if (internal::CanCachePointer<T>::value)
-      instance_data->AddWeakRef({name, ptr}, object);
+      instance_data->AddWeakRef<T>(ptr, object);
     *result = object;
     return napi_ok;
   }

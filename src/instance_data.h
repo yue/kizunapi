@@ -11,6 +11,22 @@
 
 namespace ki {
 
+namespace internal {
+
+// Get the base name of a type.
+template<typename T, typename Enable = void>
+struct TopClass {
+  static constexpr const char* name = Type<T>::name;
+};
+
+template<typename T>
+struct TopClass<T, typename std::enable_if<std::is_class<
+                       typename Type<T>::Base>::value>::type> {
+  static constexpr const char* name = TopClass<typename Type<T>::Base>::name;
+};
+
+}  // namespace internal
+
 class InstanceData {
  public:
   static InstanceData* Get(napi_env env) {
@@ -82,7 +98,9 @@ class InstanceData {
   // 1. In AddWeakRef, if there is a weak ref with |key|, add ref count, and
   //    replace the weak ref with the ref to current value.
   // 2. In DeleteWeakRef, only remove the whole |key| when ref count drops to 0.
-  void AddWeakRef(WeakRefKey key, napi_value value) {
+  template<typename T>
+  void AddWeakRef(void* ptr, napi_value value) {
+    WeakRefKey key{internal::TopClass<T>::name, ptr};
     auto it = weak_refs_.find(key);
     if (it != weak_refs_.end()) {
       it->second.first++;
@@ -92,7 +110,9 @@ class InstanceData {
     }
   }
 
-  bool GetWeakRef(WeakRefKey key, napi_value* out) const {
+  template<typename T>
+  bool GetWeakRef(void* ptr, napi_value* out) const {
+    WeakRefKey key{internal::TopClass<T>::name, ptr};
     auto it = weak_refs_.find(key);
     if (it == weak_refs_.end())
       return false;
@@ -106,7 +126,9 @@ class InstanceData {
     return true;
   }
 
-  void DeleteWeakRef(WeakRefKey key) {
+  template<typename T>
+  void DeleteWeakRef(void* ptr) {
+    WeakRefKey key{internal::TopClass<T>::name, ptr};
     auto it = weak_refs_.find(key);
     if (it == weak_refs_.end()) {
       assert(false);
