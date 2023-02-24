@@ -49,6 +49,16 @@ class Map : public Local {
     CallMethod(Env(), Value(), "delete", ToNode(Env(), key));
   }
 
+  template<typename K>
+  Map GetOrCreateMap(const K& key) {
+    napi_value ret;
+    if (!Get(key, &ret)) {
+      ret = Map(Env()).Value();
+      Set(key, ret);
+    }
+    return Map(Env(), ret);
+  }
+
  protected:
   explicit Map(napi_env env, const char* type)
       : Local(env, NewInstanceFromBuiltinType(env, type)) {}

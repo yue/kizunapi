@@ -24,6 +24,17 @@ class Local {
   napi_value value_ = nullptr;
 };
 
+template<typename T>
+struct Type<T, typename std::enable_if<std::is_base_of<Local,
+                                                       T>::value>::type> {
+  static napi_status FromNode(napi_env env,
+                              napi_value value,
+                              T* out) {
+    *out = T(env, value);
+    return napi_ok;
+  }
+};
+
 }  // namespace ki
 
 #endif  // SRC_LOCAL_H_
