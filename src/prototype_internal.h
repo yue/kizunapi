@@ -61,6 +61,19 @@ template<typename T>
 struct HasDestructor<T, void_t<decltype(Type<T>::Destructor)>>
     : std::true_type {};
 
+// Whether the JS object can be cached using the pointer as key.
+// For heap allocated types this is usually true because they have different
+// pointers, however for stack allocated types this is false as the same type
+// may be created frequently on stack with the same pointer (for example the
+// painter pointer in on_draw handler).
+template<typename, typename = void>
+struct CanCachePointer : std::true_type {};
+
+template<typename T>
+struct CanCachePointer<T, void_t<decltype(TypeBridge<T>::can_cache_pointer)>> {
+  static constexpr bool value = TypeBridge<T>::can_cache_pointer;
+};
+
 // Wrap native object to JS according to its type traits.
 template<typename T, typename Enable = void>
 struct Wrap {
@@ -213,7 +226,8 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     using DataType = decltype(data);
     napi_status s = napi_wrap(env, args.This(), data,
                               [](napi_env env, void* data, void* ptr) {
-      InstanceData::Get(env)->DeleteWeakRef({Type<T>::name, ptr});
+      if (internal::CanCachePointer<T>::value)
+        InstanceData::Get(env)->DeleteWeakRef({Type<T>::name, ptr});
       Finalize<T>::Do(static_cast<DataType>(data));
       Destruct<T>::Do(static_cast<T*>(ptr));
     }, ptr, nullptr);
@@ -223,7 +237,8 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
       napi_throw_error(env, nullptr, "Unable to wrap native object.");
     }
     // Save weak reference.
-    InstanceData::Get(env)->AddWeakRef({Type<T>::name, ptr}, args.This());
+    if (internal::CanCachePointer<T>::value)
+      InstanceData::Get(env)->AddWeakRef({Type<T>::name, ptr}, args.This());
     return nullptr;
   }
 };
