@@ -39,7 +39,8 @@ napi_value GetAttachedTable(napi_env env, napi_value value) {
 
 napi_value Init(napi_env env, napi_value exports) {
 #if defined(WIN32)
-  SetErrorMode(GetErrorMode() & ~SEM_NOGPFAULTERRORBOX);
+  if (::getenv("CI") == nullptr)
+    SetErrorMode(GetErrorMode() & ~SEM_NOGPFAULTERRORBOX);
 #endif
   ki::Set(env, exports,
           "addFinalizer", &AddFinalizer,

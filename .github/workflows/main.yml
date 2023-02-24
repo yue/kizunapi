@@ -2,6 +2,9 @@ name: kizunapi
 
 on: [push, pull_request]
 
+env:
+  CI: true
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
