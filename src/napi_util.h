@@ -38,42 +38,6 @@ napi_value CallMethod(napi_env env, napi_value object, Name&& method,
   return ret;
 }
 
-// Create scope for executing callbacks.
-class CallbackScope {
- public:
-  explicit CallbackScope(napi_env env) : env_(env) {
-    napi_status s = napi_async_init(env,
-                                    CreateObject(env),
-                                    ToNode(env, nullptr),
-                                    &context_);
-    assert(s == napi_ok);
-    s = napi_open_callback_scope(env, nullptr, context_, &scope_);
-    assert(s == napi_ok);
-  }
-
-  ~CallbackScope() {
-    napi_status s = napi_close_callback_scope(env_, scope_);
-    assert(s == napi_ok);
-    s = napi_async_destroy(env_, context_);
-    assert(s == napi_ok);
-  }
-
-  CallbackScope& operator=(const CallbackScope&) = delete;
-  CallbackScope(const CallbackScope&) = delete;
-
-  void* operator new(size_t) = delete;
-  void* operator new[] (size_t) = delete;
-  void operator delete(void*) = delete;
-  void operator delete[] (void*) = delete;
-
-  napi_async_context context() { return context_; }
-
- private:
-  napi_env env_;
-  napi_async_context context_;
-  napi_callback_scope scope_;
-};
-
 // Create scope for handle.
 class HandleScope {
  public:

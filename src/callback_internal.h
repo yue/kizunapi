@@ -175,7 +175,6 @@ class Invoker<IndicesHolder<indices...>, ArgTypes...>
   template<typename ReturnType>
   ReturnType DispatchToCallback(
       const std::function<ReturnType(ArgTypes...)>& callback) {
-    CallbackScope scope(args_->Env());
     return callback(std::move(ArgumentHolder<indices, ArgTypes>::value)...);
   }
 
@@ -307,7 +306,6 @@ template<typename... ArgTypes>
 struct V8FunctionInvoker<void(ArgTypes...)> {
   static void Go(napi_env env, Persistent* handle, ArgTypes&&... raw) {
     HandleScope handle_scope(env);
-    CallbackScope callback_scope(env);
     napi_value func = handle->Value();
     if (!func) {
       napi_throw_error(env, nullptr, "The function has been garbage collected");
@@ -316,8 +314,14 @@ struct V8FunctionInvoker<void(ArgTypes...)> {
     std::vector<napi_value> args = {
         ToNode(env, std::forward<ArgTypes>(raw))...
     };
-    napi_make_callback(env, callback_scope.context(), func, func, args.size(),
-                       args.empty() ? nullptr: &args.front(), nullptr);
+    napi_status s = napi_make_callback(env, nullptr, func, func, args.size(),
+                                       args.empty() ? nullptr: &args.front(),
+                                       nullptr);
+    if (s == napi_pending_exception) {
+      napi_value fatal_exception;
+      napi_get_and_clear_last_exception(env, &fatal_exception);
+      napi_fatal_exception(env, fatal_exception);
+    }
   }
 };
 
@@ -325,7 +329,6 @@ template<typename ReturnType, typename... ArgTypes>
 struct V8FunctionInvoker<ReturnType(ArgTypes...)> {
   static ReturnType Go(napi_env env, Persistent* handle, ArgTypes&&... raw) {
     HandleScope handle_scope(env);
-    CallbackScope callback_scope(env);
     ReturnType ret{};
     napi_value func = handle->Value();
     if (!func) {
@@ -336,12 +339,16 @@ struct V8FunctionInvoker<ReturnType(ArgTypes...)> {
         ToNode(env, std::forward<ArgTypes>(raw))...
     };
     napi_value value;
-    napi_status s = napi_make_callback(env, callback_scope.context(), func,
-                                       func, args.size(),
+    napi_status s = napi_make_callback(env, nullptr, func, func, args.size(),
                                        args.empty() ? nullptr: &args.front(),
                                        &value);
     if (s == napi_ok)
       FromNode(env, value, &ret);
+    if (s == napi_pending_exception) {
+      napi_value fatal_exception;
+      napi_get_and_clear_last_exception(env, &fatal_exception);
+      napi_fatal_exception(env, fatal_exception);
+    }
     return ret;
   }
 };
