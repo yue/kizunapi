@@ -36,6 +36,8 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
                   "Converting pointer to JavaScript requires "
                   "TypeBridge<T>::Wrap and TypeBridge<T>::Finalize being "
                   "defined.");
+    if (!ptr)
+      return napi_get_null(env, result);
     InstanceData* instance_data = InstanceData::Get(env);
     if (internal::CanCachePointer<T>::value) {
       // Check if there is already a JS object created.
