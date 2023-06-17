@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <node_api.h>
 
+#include <cstring>
 #include <map>
 #include <set>
 #include <string>
@@ -49,6 +50,21 @@ struct Type<std::nullptr_t> {
 };
 
 template<>
+struct Type<void*> {
+  static constexpr const char* name = "Buffer";
+  static inline napi_status ToNode(napi_env env,
+                                   void* value,
+                                   napi_value* result) {
+    void* data;
+    napi_status s = napi_create_buffer(env, sizeof(void*), &data, result);
+    if (s != napi_ok)
+      return s;
+    std::memcpy(data, &value, sizeof(void*));
+    return napi_ok;
+  }
+};
+
+template<>
 struct Type<int32_t> {
   static constexpr const char* name = "Integer";
   static inline napi_status ToNode(napi_env env,
@@ -80,10 +96,25 @@ struct Type<int64_t> {
   static inline napi_status ToNode(napi_env env,
                                    int64_t value,
                                    napi_value* result) {
-    return napi_create_int64(env, value, result);
+    return napi_create_bigint_int64(env, value, result);
   }
   static napi_status FromNode(napi_env env, napi_value value, int64_t* out) {
-    return napi_get_value_int64(env, value, out);
+    bool lossless;
+    return napi_get_value_bigint_int64(env, value, out, &lossless);
+  }
+};
+
+template<>
+struct Type<uint64_t> {
+  static constexpr const char* name = "Integer";
+  static inline napi_status ToNode(napi_env env,
+                                   uint64_t value,
+                                   napi_value* result) {
+    return napi_create_bigint_uint64(env, value, result);
+  }
+  static napi_status FromNode(napi_env env, napi_value value, uint64_t* out) {
+    bool lossless;
+    return napi_get_value_bigint_uint64(env, value, out, &lossless);
   }
 };
 
