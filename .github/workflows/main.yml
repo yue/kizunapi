@@ -13,8 +13,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [14, 16, 18]
-        os: [ubuntu-20.04, windows-2019, macos-11]
+        node-version: [16, 18, 20]
+        os: [ubuntu-22.04, windows-2022, macos-13]
 
     steps:
       - uses: actions/setup-node@v3
@@ -26,8 +26,8 @@ jobs:
 
       - name: Test
         run: |
-          yarn
-          yarn test
+          npm install
+          npm run test
 
   lint:
     runs-on: ubuntu-latest

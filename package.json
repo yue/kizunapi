@@ -11,7 +11,7 @@
   "scripts": {
     "pretest": "node-gyp rebuild --debug -C test",
     "lint": "cpplint --recursive --filter=-build/include_what_you_use src test",
-    "test": "node --expose-gc test",
+    "test": "node --expose-gc test/index.js",
     "test:incremental": "node-gyp build --debug -C test && node --expose-gc test"
   },
   "readme": "README.md",
