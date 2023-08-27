@@ -40,3 +40,22 @@ jobs:
         run: |
           yarn
           yarn lint
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build, lint]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set package version
+        run: |
+          npm config set git-tag-version=false
+          npm version $(git describe --tags)
+
+      - name: Publish npm package
+        uses: JS-DevTools/npm-publish@v2
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
