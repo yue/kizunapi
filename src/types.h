@@ -66,6 +66,40 @@ struct Type<void*> {
 };
 
 template<>
+struct Type<uint8_t> {
+  static constexpr const char* name = "Integer";
+  static inline napi_status ToNode(napi_env env,
+                                   uint8_t value,
+                                   napi_value* result) {
+    return napi_create_uint32(env, value, result);
+  }
+  static inline std::optional<uint8_t> FromNode(napi_env env,
+                                                napi_value value) {
+    uint32_t val;
+    if (napi_get_value_uint32(env, value, &val) != napi_ok)
+      return std::nullopt;
+    return static_cast<uint8_t>(val);
+  }
+};
+
+template<>
+struct Type<uint16_t> {
+  static constexpr const char* name = "Integer";
+  static inline napi_status ToNode(napi_env env,
+                                   uint16_t value,
+                                   napi_value* result) {
+    return napi_create_uint32(env, value, result);
+  }
+  static inline std::optional<uint16_t> FromNode(napi_env env,
+                                                 napi_value value) {
+    uint32_t val;
+    if (napi_get_value_uint32(env, value, &val) != napi_ok)
+      return std::nullopt;
+    return static_cast<uint16_t>(val);
+  }
+};
+
+template<>
 struct Type<int8_t> {
   static constexpr const char* name = "Integer";
   static inline napi_status ToNode(napi_env env,
@@ -82,19 +116,19 @@ struct Type<int8_t> {
 };
 
 template<>
-struct Type<uint8_t> {
+struct Type<int16_t> {
   static constexpr const char* name = "Integer";
   static inline napi_status ToNode(napi_env env,
-                                   uint8_t value,
+                                   int16_t value,
                                    napi_value* result) {
-    return napi_create_uint32(env, value, result);
+    return napi_create_int32(env, value, result);
   }
-  static inline std::optional<uint8_t> FromNode(napi_env env,
+  static inline std::optional<int16_t> FromNode(napi_env env,
                                                 napi_value value) {
-    uint32_t val;
-    if (napi_get_value_uint32(env, value, &val) != napi_ok)
+    int32_t val;
+    if (napi_get_value_int32(env, value, &val) != napi_ok)
       return std::nullopt;
-    return static_cast<uint8_t>(val);
+    return static_cast<int16_t>(val);
   }
 };
 
