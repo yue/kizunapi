@@ -40,8 +40,9 @@ class Map : public Local {
 
   template<typename K>
   bool Has(const K& key) const {
-    return FromNodeTo<bool>(
-        Env(), CallMethod(Env(), Value(), "has", ToNode(Env(), key)));
+    return FromNode<bool>(
+        Env(),
+        CallMethod(Env(), Value(), "has", ToNode(Env(), key))).value_or(false);
   }
 
   template<typename K>

@@ -8,6 +8,7 @@
 #include <node_api.h>
 
 #include <cstring>
+#include <optional>
 #include <map>
 #include <set>
 #include <string>
@@ -33,9 +34,9 @@ struct Type<napi_value> {
     *result = value;
     return napi_ok;
   }
-  static napi_status FromNode(napi_env env, napi_value value, napi_value* out) {
-    *out = value;
-    return napi_ok;
+  static inline std::optional<napi_value> FromNode(napi_env env,
+                                                   napi_value value) {
+    return value;
   }
 };
 
@@ -72,13 +73,11 @@ struct Type<int8_t> {
                                    napi_value* result) {
     return napi_create_int32(env, value, result);
   }
-  static napi_status FromNode(napi_env env, napi_value value, int8_t* out) {
+  static inline std::optional<int8_t> FromNode(napi_env env, napi_value value) {
     int32_t val;
-    napi_status s = napi_get_value_int32(env, value, &val);
-    if (s != napi_ok)
-      return s;
-    *out = static_cast<int8_t>(val);
-    return napi_ok;
+    if (napi_get_value_int32(env, value, &val) != napi_ok)
+      return std::nullopt;
+    return static_cast<int8_t>(val);
   }
 };
 
@@ -90,13 +89,12 @@ struct Type<uint8_t> {
                                    napi_value* result) {
     return napi_create_uint32(env, value, result);
   }
-  static napi_status FromNode(napi_env env, napi_value value, uint8_t* out) {
+  static inline std::optional<uint8_t> FromNode(napi_env env,
+                                                napi_value value) {
     uint32_t val;
-    napi_status s = napi_get_value_uint32(env, value, &val);
-    if (s != napi_ok)
-      return s;
-    *out = static_cast<uint8_t>(val);
-    return napi_ok;
+    if (napi_get_value_uint32(env, value, &val) != napi_ok)
+      return std::nullopt;
+    return static_cast<uint8_t>(val);
   }
 };
 
@@ -108,8 +106,12 @@ struct Type<int32_t> {
                                    napi_value* result) {
     return napi_create_int32(env, value, result);
   }
-  static napi_status FromNode(napi_env env, napi_value value, int32_t* out) {
-    return napi_get_value_int32(env, value, out);
+  static inline std::optional<int32_t> FromNode(napi_env env,
+                                                napi_value value) {
+    int32_t result;
+    if (napi_get_value_int32(env, value, &result) == napi_ok)
+      return result;
+    return std::nullopt;
   }
 };
 
@@ -121,8 +123,12 @@ struct Type<uint32_t> {
                                    napi_value* result) {
     return napi_create_uint32(env, value, result);
   }
-  static napi_status FromNode(napi_env env, napi_value value, uint32_t* out) {
-    return napi_get_value_uint32(env, value, out);
+  static inline std::optional<uint32_t> FromNode(napi_env env,
+                                                 napi_value value) {
+    uint32_t result;
+    if (napi_get_value_uint32(env, value, &result) == napi_ok)
+      return result;
+    return std::nullopt;
   }
 };
 
@@ -134,9 +140,13 @@ struct Type<int64_t> {
                                    napi_value* result) {
     return napi_create_bigint_int64(env, value, result);
   }
-  static napi_status FromNode(napi_env env, napi_value value, int64_t* out) {
+  static inline std::optional<int64_t> FromNode(napi_env env,
+                                                napi_value value) {
+    int64_t result;
     bool lossless;
-    return napi_get_value_bigint_int64(env, value, out, &lossless);
+    if (napi_get_value_bigint_int64(env, value, &result, &lossless) == napi_ok)
+      return result;
+    return std::nullopt;
   }
 };
 
@@ -148,9 +158,13 @@ struct Type<uint64_t> {
                                    napi_value* result) {
     return napi_create_bigint_uint64(env, value, result);
   }
-  static napi_status FromNode(napi_env env, napi_value value, uint64_t* out) {
+  static inline std::optional<uint64_t> FromNode(napi_env env,
+                                                 napi_value value) {
+    uint64_t result;
     bool lossless;
-    return napi_get_value_bigint_uint64(env, value, out, &lossless);
+    if (napi_get_value_bigint_uint64(env, value, &result, &lossless) == napi_ok)
+      return result;
+    return std::nullopt;
   }
 };
 
@@ -162,12 +176,12 @@ struct Type<float> {
                                    napi_value* result) {
     return napi_create_double(env, value, result);
   }
-  static napi_status FromNode(napi_env env, napi_value value, float* out) {
+  static inline std::optional<float> FromNode(napi_env env,
+                                              napi_value value) {
     double intermediate;
-    napi_status s = napi_get_value_double(env, value, &intermediate);
-    if (s == napi_ok)
-      *out = intermediate;
-    return s;
+    if (napi_get_value_double(env, value, &intermediate) == napi_ok)
+      return static_cast<float>(intermediate);
+    return std::nullopt;
   }
 };
 
@@ -179,8 +193,12 @@ struct Type<double> {
                                    napi_value* result) {
     return napi_create_double(env, value, result);
   }
-  static napi_status FromNode(napi_env env, napi_value value, double* out) {
-    return napi_get_value_double(env, value, out);
+  static inline std::optional<double> FromNode(napi_env env,
+                                               napi_value value) {
+    double result;
+    if (napi_get_value_double(env, value, &result) == napi_ok)
+      return result;
+    return std::nullopt;
   }
 };
 
@@ -192,8 +210,12 @@ struct Type<bool> {
                                    napi_value* result) {
     return napi_get_boolean(env, value, result);
   }
-  static napi_status FromNode(napi_env env, napi_value value, bool* out) {
-    return napi_get_value_bool(env, value, out);
+  static inline std::optional<bool> FromNode(napi_env env,
+                                             napi_value value) {
+    bool result;
+    if (napi_get_value_bool(env, value, &result) == napi_ok)
+      return result;
+    return std::nullopt;
   }
 };
 
@@ -205,22 +227,20 @@ struct Type<std::string> {
                                    napi_value* result) {
     return napi_create_string_utf8(env, value.c_str(), value.length(), result);
   }
-  static napi_status FromNode(napi_env env,
-                              napi_value value,
-                              std::string* out) {
+  static std::optional<std::string> FromNode(napi_env env, napi_value value) {
     size_t length;
-    napi_status s = napi_get_value_string_utf8(env, value, nullptr, 0, &length);
-    if (s != napi_ok)
-      return s;
+    if (napi_get_value_string_utf8(env, value, nullptr, 0, &length) != napi_ok)
+      return std::nullopt;
+    std::string out;
     if (length > 0) {
-      out->reserve(length + 1);
-      out->resize(length);
-      return napi_get_value_string_utf8(env, value, &out->front(),
-                                        out->capacity(), nullptr);
-    } else {
-      out->clear();
-      return napi_ok;
+      out.reserve(length + 1);
+      out.resize(length);
+      if (napi_get_value_string_utf8(env, value, &out.front(), out.capacity(),
+                                     nullptr) != napi_ok) {
+        return std::nullopt;
+      }
     }
+    return out;
   }
 };
 
@@ -232,23 +252,21 @@ struct Type<std::u16string> {
                                    napi_value* result) {
     return napi_create_string_utf16(env, value.c_str(), value.length(), result);
   }
-  static napi_status FromNode(napi_env env,
-                              napi_value value,
-                              std::u16string* out) {
+  static std::optional<std::u16string> FromNode(napi_env env,
+                                                napi_value value) {
     size_t length;
-    napi_status s = napi_get_value_string_utf16(env, value, nullptr, 0,
-                                                &length);
-    if (s != napi_ok)
-      return s;
+    if (napi_get_value_string_utf16(env, value, nullptr, 0, &length) != napi_ok)
+      return std::nullopt;
+    std::u16string out;
     if (length > 0) {
-      out->reserve(length + 1);
-      out->resize(length);
-      return napi_get_value_string_utf16(env, value, &out->front(),
-                                         out->capacity(), nullptr);
-    } else {
-      out->clear();
-      return napi_ok;
+      out.reserve(length + 1);
+      out.resize(length);
+      if (napi_get_value_string_utf16(env, value, &out.front(), out.capacity(),
+                                      nullptr) != napi_ok) {
+        return std::nullopt;
+      }
     }
+    return out;
   }
 };
 
@@ -399,11 +417,6 @@ inline napi_status ConvertToNode(napi_env env, T&& value,
   return Type<std::decay_t<T>>::ToNode(env, std::forward<T>(value), result);
 }
 
-template<typename T>
-inline napi_status ConvertFromNode(napi_env env, napi_value value, T* out) {
-  return Type<T>::FromNode(env, value, out);
-}
-
 // Optimized version for string iterals.
 template<size_t n>
 inline napi_status ConvertToNode(napi_env env, const char (&value)[n],
@@ -438,11 +451,6 @@ inline napi_value ToNode(napi_env env, T&& value) {
   return ConvertIgnoringStatus<std::decay_t<T>>(env, std::forward<T>(value));
 }
 
-template<typename T>
-inline bool FromNode(napi_env env, napi_value value, T* out) {
-  return Type<T>::FromNode(env, value, out) == napi_ok;
-}
-
 template<size_t n>
 inline napi_value ToNode(napi_env env, const char (&value)[n]) {
   return ConvertIgnoringStatus<char[n]>(env, value);
@@ -453,25 +461,30 @@ inline napi_value ToNode(napi_env env, const char16_t (&value)[n]) {
   return ConvertIgnoringStatus<char16_t[n]>(env, value);
 }
 
-// Convert from node and ignore errors.
 template<typename T>
-inline T FromNodeTo(napi_env env, napi_value value) {
-  T result{};
-  FromNode(env, value, &result);
-  return result;
+inline bool FromNode(napi_env env, napi_value value, T* out) {
+  std::optional<T> result = Type<T>::FromNode(env, value);
+  if (!result)
+    return false;
+  *out = std::move(*result);
+  return true;
 }
 
-struct DeduceFromNode {
-  DeduceFromNode(napi_env env, napi_value value) : env(env), value(value) {}
-
-  template<typename T>
-  operator T() { return FromNodeTo<T>(env, value); }
-
-  napi_env env;
-  napi_value value;
-};
+// The modern version of FromNode.
+template<typename T>
+inline std::optional<T> FromNode(napi_env env, napi_value value) {
+  return Type<T>::FromNode(env, value);
+}
 
 // Define converters for some frequently used types.
+
+template<typename T>
+struct Type<std::optional<T>> {
+  static constexpr const char* name = Type<T>::name;
+  // There is no converter defined, so we can implement optional argument by
+  // using std::optional<T> as parameter.
+};
+
 template<typename T>
 struct Type<std::vector<T>> {
   static constexpr const char* name = "Array";
@@ -575,18 +588,18 @@ struct Type<std::map<K, V>> {
     napi_status s = napi_get_property_names(env, object, &property_names);
     if (s != napi_ok) return s;
     std::vector<napi_value> keys;
-    s = ConvertFromNode(env, property_names, &keys);
-    if (s != napi_ok) return s;
+    if (!FromNode(env, property_names, &keys))
+      return napi_invalid_arg;
     for (napi_value key : keys) {
       K k;
-      s = ConvertFromNode(env, key, &k);
-      if (s != napi_ok) return s;
+      if (!FromNode(env, key, &k))
+        return napi_invalid_arg;
       napi_value value;
       s = napi_get_property(env, object, key, &value);
       if (s != napi_ok) return s;
       V v;
-      s = ConvertFromNode(env, value, &v);
-      if (s != napi_ok) return s;
+      if (!FromNode(env, value, &v))
+        return napi_invalid_arg;
       out->emplace(std::move(k), std::move(v));
     }
     return napi_ok;

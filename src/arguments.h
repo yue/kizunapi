@@ -68,28 +68,27 @@ class Arguments {
   }
 
   template<typename T>
-  bool GetNext(T* out) {
+  std::optional<T> GetNext() {
     if (next_ >= Length()) {
       insufficient_arguments_ = true;
-      return false;
+      return std::nullopt;
     }
-    return FromNode(env_, argv_[next_++], out);
+    return FromNode<T>(env_, argv_[next_++]);
   }
 
   // A helper to handle the cases where user wants to store a weak function
   // passed via arguments.
   template<typename Sig>
-  bool GetNextWeakFunction(std::function<Sig>* out) {
-    napi_value value;
-    if (!GetNext(&value))
-      return false;
-    return Type<std::function<Sig>>::FromNode(
-        env_, value, out, 0 /* ref_count */) == napi_ok;
+  std::optional<std::function<Sig>> GetNextWeakFunction() {
+    std::optional<napi_value> value = GetNext<napi_value>();
+    if (!value)
+      return std::nullopt;
+    return Type<std::function<Sig>>::FromNode(env_, *value, 0);
   }
 
   template<typename T>
-  bool GetThis(T* out) const {
-    return FromNode(env_, this_, out);
+  std::optional<T> GetThis() const {
+    return FromNode<T>(env_, this_);
   }
 
   bool IsConstructorCall() const {

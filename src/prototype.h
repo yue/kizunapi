@@ -75,18 +75,16 @@ struct Type<T*, std::enable_if_t<!std::is_const_v<T> &&
     *result = object;
     return napi_ok;
   }
-  static inline napi_status FromNode(napi_env env, napi_value value, T** out) {
+  static inline std::optional<T*> FromNode(napi_env env, napi_value value) {
     void* result;
-    napi_status s = napi_unwrap(env, value, &result);
-    if (s != napi_ok)
-      return s;
+    if (napi_unwrap(env, value, &result) != napi_ok)
+      return std::nullopt;
     if (!internal::IsInstanceOf<T>(env, value))
-      return napi_generic_failure;
+      return std::nullopt;
     T* ptr = internal::Unwrap<T>::Do(result);
     if (!ptr)
-      return napi_generic_failure;
-    *out = ptr;
-    return napi_ok;
+      return std::nullopt;
+    return ptr;
   }
 };
 

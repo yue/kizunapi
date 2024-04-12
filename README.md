@@ -25,11 +25,16 @@ __This project is at early stage, behavior of APIs may change without notice.__
   'include_dirs': ["<!(node -p \"require('kizunapi').include_dir\")"],
 ```
 
-3. Enable C++17 in `bindings.gyp` if you mean to support Node.js < 18:
+3. Enable C++17 in `bindings.gyp`:
 
 ```python
   'cflags_cc': [ '-std=c++17' ],
   'xcode_settings': { 'OTHER_CFLAGS': [ '-std=c++17'] },
+  'msvs_settings': {
+    'VCCLCompilerTool': {
+      'AdditionalOptions': [ '/std:c++17' ],
+    },
+  },
 ```
 
 4. In source code:

@@ -6,7 +6,12 @@
       # C++17 is required for this feature:
       # https://stackoverflow.com/questions/8452952/c-linker-error-with-class-static-constexpr
       'cflags_cc': [ '-std=c++17' ],
-      'xcode_settings': { 'OTHER_CFLAGS': [ '-std=c++17'] },
+      'xcode_settings': { 'OTHER_CFLAGS': [ '-std=c++17' ] },
+      'msvs_settings': {
+        'VCCLCompilerTool': {
+          'AdditionalOptions': [ '/std:c++17' ],
+        },
+      },
       'sources': [
         'main.cc',
         'callback_tests.cc',

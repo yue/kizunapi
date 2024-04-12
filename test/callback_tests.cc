@@ -36,7 +36,9 @@ class TestClass {
 std::function<void()> stored_function;
 
 void StoreWeakFunction(ki::Arguments args) {
-  ki::ConvertWeakFunctionFromNode(args.Env(), args[0], &stored_function);
+  auto result = ki::ConvertWeakFunctionFromNode<void>(args.Env(), args[0]);
+  if (result)
+    stored_function = std::move(*result);
 }
 
 void RunStoredFunction() {
@@ -59,10 +61,13 @@ struct Type<TestClass*> {
                                    napi_value* result) {
     return napi_create_external(env, value, nullptr, nullptr, result);
   }
-  static napi_status FromNode(napi_env env,
-                              napi_value value,
-                              TestClass** out) {
-    return napi_get_value_external(env, value, reinterpret_cast<void**>(out));
+  static inline std::optional<TestClass*> FromNode(napi_env env,
+                                                   napi_value value) {
+    TestClass* out;
+    if (napi_get_value_external(env, value, reinterpret_cast<void**>(&out))
+            == napi_ok)
+      return out;
+    return std::nullopt;
   }
 };
 

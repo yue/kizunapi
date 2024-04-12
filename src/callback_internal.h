@@ -25,7 +25,7 @@ namespace internal {
 // Deduce the proper type for callback parameters.
 template<typename T>
 struct CallbackParamTraits {
-  using LocalType = typename std::decay<T>::type;
+  using LocalType = std::decay_t<T>;
 };
 template<typename T>
 struct CallbackParamTraits<const T*> {
@@ -51,58 +51,80 @@ struct IsFunctionConversionSupported
 
 // Helper to read C++ args from JS args.
 template<typename T>
-inline bool GetNextArgument(Arguments* args, int flags, bool is_first,
-                            T* result) {
-  if (is_first && (flags & HolderIsFirstArgument) != 0) {
-    return args->GetThis(result);
-  } else {
-    return args->GetNext(result);
+struct ArgConverter {
+  static inline std::optional<T> GetNext(
+      Arguments* args, int flags, bool is_first) {
+    if (is_first && (flags & HolderIsFirstArgument) != 0) {
+      return args->GetThis<T>();
+    } else {
+      return args->GetNext<T>();
+    }
   }
-}
+};
+
+// Allow optional arguments.
+template<typename T>
+struct ArgConverter<std::optional<T>> {
+  static inline std::optional<std::optional<T>> GetNext(
+      Arguments* args, int flags, bool is_first) {
+    std::optional<T> out = ArgConverter<T>::GetNext(args, flags, is_first);
+    if (out)
+      return out;
+    else
+      return std::nullopt;
+  }
+};
 
 // Implementation of the FunctionArgumentIsWeakRef flag.
 template<typename Sig>
-inline bool GetNextArgument(Arguments* args, int flags, bool is_first,
-                            std::function<Sig>* result) {
-  if ((flags & FunctionArgumentIsWeakRef) != 0)
-    return args->GetNextWeakFunction(result);
-  else
-    return args->GetNext(result);
-}
+struct ArgConverter<std::function<Sig>> {
+  static inline std::optional<std::function<Sig>> GetNext(
+      Arguments* args, int flags, bool is_first) {
+    if ((flags & FunctionArgumentIsWeakRef) != 0)
+      return args->GetNextWeakFunction<Sig>();
+    else
+      return args->GetNext<std::function<Sig>>();
+  }
+};
 
 // For advanced use cases, we allow callers to request the unparsed Arguments
 // object and poke around in it directly.
-inline bool GetNextArgument(Arguments* args, int flags, bool is_first,
-                            Arguments* result) {
-  *result = *args;
-  return true;
-}
-inline bool GetNextArgument(Arguments* args, int flags, bool is_first,
-                            Arguments** result) {
-  *result = args;
-  return true;
-}
+template<>
+struct ArgConverter<Arguments> {
+  static inline std::optional<Arguments> GetNext(
+      Arguments* args, int flags, bool is_first) {
+    return *args;
+  }
+};
+template<>
+struct ArgConverter<Arguments*> {
+  static inline std::optional<Arguments*> GetNext(
+      Arguments* args, int flags, bool is_first) {
+    return args;
+  }
+};
 
 // It's common for clients to just need the env, so we make that easy.
-inline bool GetNextArgument(Arguments* args, int flags, bool is_first,
-                            napi_env* result) {
-  *result = args->Env();
-  return true;
-}
+template<>
+struct ArgConverter<napi_env> {
+  static inline std::optional<napi_env> GetNext(
+      Arguments* args, int flags, bool is_first) {
+    return args->Env();
+  }
+};
 
 // Class template for extracting and storing single argument for callback
 // at position |index|.
 template<size_t index, typename ArgType>
 struct ArgumentHolder {
-  using ArgLocalType = typename CallbackParamTraits<ArgType>::LocalType;
+  using LocalType = typename CallbackParamTraits<ArgType>::LocalType;
 
-  ArgLocalType value;
-  bool ok;
+  std::optional<LocalType> value;
 
   ArgumentHolder(Arguments* args, int flags)
-      : ok(GetNextArgument(args, flags, index == 0, &value)) {
-    if (!ok)
-      args->ThrowError(Type<ArgLocalType>::name);
+      : value(ArgConverter<LocalType>::GetNext(args, flags, index == 0)) {
+    if (!value)
+      args->ThrowError(Type<LocalType>::name);
   }
 };
 
@@ -169,13 +191,13 @@ class Invoker<IndicesHolder<indices...>, ArgTypes...>
       : ArgumentHolder<indices, ArgTypes>(args, flags)..., args_(args) {}
 
   bool IsOK() {
-    return And(ArgumentHolder<indices, ArgTypes>::ok...);
+    return And(ArgumentHolder<indices, ArgTypes>::value.has_value()...);
   }
 
   template<typename ReturnType>
   ReturnType DispatchToCallback(
       const std::function<ReturnType(ArgTypes...)>& callback) {
-    return callback(std::move(ArgumentHolder<indices, ArgTypes>::value)...);
+    return callback(std::move(*ArgumentHolder<indices, ArgTypes>::value)...);
   }
 
  private:

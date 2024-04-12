@@ -24,30 +24,27 @@ namespace ki {
 //   weakMap.get(win).set('onClick', callback)
 // In this way V8 can recognize the circular reference and do GC.
 template<typename ReturnType, typename... ArgTypes>
-inline napi_status ConvertWeakFunctionFromNode(
+std::optional<std::function<ReturnType(ArgTypes...)>>
+ConvertWeakFunctionFromNode(
     napi_env env,
     napi_value value,
-    std::function<ReturnType(ArgTypes...)>* out,
     int ref_count = 0 /* This parameter is only used internally */) {
   napi_valuetype type;
   napi_status s = napi_typeof(env, value, &type);
   if (s != napi_ok)
-    return s;
-  if (type == napi_null) {
-    *out = nullptr;
-    return napi_ok;
-  }
+    return std::nullopt;
   if (type != napi_function)
-    return napi_function_expected;
+    return std::nullopt;
+  if (type == napi_null)  // null is accepted as empty function
+    return nullptr;
   // Everything bundled with a std::function must be copiable, so we can not
   // simply move the handle here. And we would like to avoid actually copying
   // the Persistent because it requires a handle scope.
   auto handle = std::make_shared<Persistent>(env, value, ref_count);
-  *out = [env, handle](ArgTypes&&... args) -> ReturnType {
+  return [env, handle](ArgTypes&&... args) -> ReturnType {
     return internal::V8FunctionInvoker<ReturnType(ArgTypes...)>::Go(
         env, handle.get(), std::forward<ArgTypes>(args)...);
   };
-  return napi_ok;
 }
 
 // Define how callbacks are converted.
@@ -62,11 +59,10 @@ struct Type<std::function<ReturnType(ArgTypes...)>> {
       return napi_get_null(env, result);
     return internal::CreateNodeFunction(env, std::move(value), result);
   }
-  static napi_status FromNode(napi_env env,
-                              napi_value value,
-                              std::function<Sig>* out,
-                              int ref_count = 1 /* internal */) {
-    return ConvertWeakFunctionFromNode(env, value, out, ref_count);
+  static inline std::optional<std::function<Sig>> FromNode(
+      napi_env env, napi_value value, int ref_count = 1 /* internal */) {
+    return ConvertWeakFunctionFromNode<ReturnType, ArgTypes...>(
+        env, value, ref_count);
   }
 };
 

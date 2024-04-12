@@ -113,9 +113,11 @@ struct Type<Point> {
       return napi_generic_failure;
     return napi_ok;
   }
-  static napi_status FromNode(napi_env env, napi_value value, Point* out) {
-    return Get(env, value, "x", &out->x, "y", &out->y) ? napi_ok
-                                                       : napi_generic_failure;
+  static std::optional<Point> FromNode(napi_env env, napi_value value) {
+    Point out;
+    if (Get(env, value, "x", &out.x, "y", &out.y))
+      return out;
+    return std::nullopt;
   }
 };
 
