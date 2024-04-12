@@ -138,13 +138,12 @@ struct Type<int64_t> {
   static inline napi_status ToNode(napi_env env,
                                    int64_t value,
                                    napi_value* result) {
-    return napi_create_bigint_int64(env, value, result);
+    return napi_create_int64(env, value, result);
   }
   static inline std::optional<int64_t> FromNode(napi_env env,
                                                 napi_value value) {
     int64_t result;
-    bool lossless;
-    if (napi_get_value_bigint_int64(env, value, &result, &lossless) == napi_ok)
+    if (napi_get_value_int64(env, value, &result) == napi_ok)
       return result;
     return std::nullopt;
   }
@@ -167,6 +166,18 @@ struct Type<uint64_t> {
     return std::nullopt;
   }
 };
+
+#if defined(__APPLE__)
+template<>
+struct Type<size_t> {
+  static constexpr const char* name = "Integer";
+  static inline napi_status ToNode(napi_env env,
+                                   size_t value,
+                                   napi_value* result) {
+    return napi_create_int64(env, value, result);
+  }
+};
+#endif
 
 template<>
 struct Type<float> {
@@ -449,6 +460,13 @@ inline napi_value ToNode(napi_env env, const T& value) {
 template<typename T>
 inline napi_value ToNode(napi_env env, T&& value) {
   return ConvertIgnoringStatus<std::decay_t<T>>(env, std::forward<T>(value));
+}
+
+template<typename T>
+inline napi_value ToNode(napi_env env, std::optional<T>&& value) {
+  if (!value)
+    return Undefined(env);
+  return ToNode(env, *value);
 }
 
 template<size_t n>
