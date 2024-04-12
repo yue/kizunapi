@@ -554,23 +554,25 @@ struct Type<std::vector<T>> {
     }
     return napi_ok;
   }
-  static napi_status FromNode(napi_env env,
-                              napi_value value,
-                              std::vector<T>* out) {
+  static std::optional<std::vector<T>> FromNode(napi_env env,
+                                                napi_value value) {
     if (!IsArray(env, value))
-      return napi_array_expected;
+      return std::nullopt;
     uint32_t length;
-    napi_status s = napi_get_array_length(env, value, &length);
-    if (s != napi_ok) return s;
-    out->resize(length);
+    if (napi_get_array_length(env, value, &length) != napi_ok)
+      return std::nullopt;
+    std::vector<T> result;
+    result.reserve(length);
     for (uint32_t i = 0; i < length; ++i) {
       napi_value el = nullptr;
-      s = napi_get_element(env, value, i, &el);
-      if (s != napi_ok) return s;
-      s = Type<T>::FromNode(env, el, &(*out)[i]);
-      if (s != napi_ok) return s;
+      if (napi_get_element(env, value, i, &el) != napi_ok)
+        return std::nullopt;
+      std::optional<T> out = Type<T>::FromNode(env, el);
+      if (!out)
+        return std::nullopt;
+      result.push_back(std::move(*out));
     }
-    return napi_ok;
+    return result;
   }
 };
 
@@ -592,24 +594,25 @@ struct Type<std::set<T>> {
     }
     return napi_ok;
   }
-  static napi_status FromNode(napi_env env,
-                              napi_value value,
-                              std::set<T>* out) {
+  static std::optional<std::set<T>> FromNode(napi_env env,
+                                             napi_value value) {
     if (!IsArray(env, value))
-      return napi_array_expected;
+      return std::nullopt;
     uint32_t length;
-    napi_status s = napi_get_array_length(env, value, &length);
-    if (s != napi_ok) return s;
+    if (napi_get_array_length(env, value, &length) != napi_ok)
+      return std::nullopt;
+    std::set<T> result;
+    result.reserve(length);
     for (uint32_t i = 0; i < length; ++i) {
       napi_value el;
-      s = napi_get_element(env, value, i, &el);
-      if (s != napi_ok) return s;
-      T element;
-      s = Type<T>::FromNode(env, el, &element);
-      if (s != napi_ok) return s;
-      out->insert(std::move(element));
+      if (napi_get_element(env, value, i, &el) != napi_ok)
+        return std::nullopt;
+      std::optional<T> element = Type<T>::FromNode(env, el);
+      if (!element)
+        return std::nullopt;
+      result.insert(std::move(*element));
     }
-    return napi_ok;
+    return result;
   }
 };
 
@@ -633,28 +636,30 @@ struct Type<std::map<K, V>> {
     }
     return s;
   }
-  static napi_status FromNode(napi_env env,
-                              napi_value object,
-                              std::map<K, V>* out) {
+  static std::optional<std::map<K, V>> FromNode(napi_env env,
+                                                napi_value object) {
     napi_value property_names;
-    napi_status s = napi_get_property_names(env, object, &property_names);
-    if (s != napi_ok) return s;
-    std::vector<napi_value> keys;
-    if (!FromNode(env, property_names, &keys))
-      return napi_invalid_arg;
-    for (napi_value key : keys) {
-      K k;
-      if (!FromNode(env, key, &k))
-        return napi_invalid_arg;
+    if (napi_get_property_names(env, object, &property_names) != napi_ok)
+      return std::nullopt;
+    std::optional<std::vector<napi_value>> keys =
+        Type<std::vector<napi_value>>::FromNode(env, property_names);
+    if (!keys)
+      return std::nullopt;
+    std::map<K, V> result;
+    result.reserve(keys->size());
+    for (napi_value key : *keys) {
+      std::optional<K> k = Type<K>::FromNode(env, key);
+      if (!k)
+        return std::nullopt;
       napi_value value;
-      s = napi_get_property(env, object, key, &value);
-      if (s != napi_ok) return s;
-      V v;
-      if (!FromNode(env, value, &v))
-        return napi_invalid_arg;
-      out->emplace(std::move(k), std::move(v));
+      if (napi_get_property(env, object, key, &value) != napi_ok)
+        return std::nullopt;
+      std::optional<V> v = Type<V>::FromNode(env, value);
+      if (!v)
+        return std::nullopt;
+      result.emplace(std::move(*k), std::move(*v));
     }
-    return napi_ok;
+    return result;
   }
 };
 
