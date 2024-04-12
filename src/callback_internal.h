@@ -328,12 +328,13 @@ inline std::function<NodeCallbackSig> CreateNodeCallbackWithHolder(
 // JavaScript arguments are automatically converted via Type<T>, as is
 // the return value of the C++ function, if any.
 template<typename T>
-inline napi_status CreateNodeFunction(napi_env env, T func,
-                                      napi_value* result) {
+inline napi_status CreateNodeFunction(napi_env env, T func, napi_value* result,
+                                      int flags = 0) {
   using Factory = CallbackHolderFactory<T>;
   using RunType = typename Factory::RunType;
   using HolderT = typename Factory::HolderT;
-  auto holder = std::make_unique<HolderT>(Factory::Create(std::move(func)));
+  auto holder = std::make_unique<HolderT>(Factory::Create(std::move(func),
+                                                          flags));
   napi_value intermediate;
   napi_status s = napi_create_function(env, nullptr, 0,
                                        &ReturnToNode<RunType>::Invoke,

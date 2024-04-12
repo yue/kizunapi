@@ -75,6 +75,29 @@ struct Type<T, typename std::enable_if<
   }
 };
 
+// Helper mark a normal function as member function.
+template<typename T>
+struct MemberFunctionHolder {
+  T func;
+};
+
+template<typename T>
+struct Type<MemberFunctionHolder<T>,
+            std::enable_if_t<
+                internal::IsFunctionConversionSupported<T>::value>> {
+  static constexpr const char* name = "Function";
+  static inline napi_status ToNode(napi_env env, MemberFunctionHolder<T> value,
+                                   napi_value* result) {
+    return internal::CreateNodeFunction(env, value.func, result,
+                                        HolderIsFirstArgument);
+  }
+};
+
+template<typename T>
+inline MemberFunctionHolder<T> MemberFunction(T func) {
+  return MemberFunctionHolder<T>{func};
+}
+
 }  // namespace ki
 
 #endif  // SRC_CALLBACK_H_
