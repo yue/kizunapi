@@ -25,6 +25,47 @@ struct Type<Class<T>> {
   }
 };
 
+// Helper to create a new class wrapping raw ptr.
+// The Constructor/Destructor of Type<T> will NOT be called.
+template<typename T>
+napi_status ManagePointerInJSWrapper(napi_env env, T* ptr, napi_value* result) {
+  InstanceData* instance_data = InstanceData::Get(env);
+  if (internal::CanCachePointer<T>::value) {
+    // Check if there is already a JS object created.
+    if (instance_data->GetWeakRef<T>(ptr, result))
+      return napi_ok;
+  }
+  // Pass an External to indicate it is called from native code.
+  napi_value external;
+  napi_status s = napi_create_external(env, internal::GetConstructorKey(),
+                                       nullptr, nullptr, &external);
+  if (s != napi_ok)
+    return s;
+  // Create a JS object with "new Class(external)".
+  napi_value constructor = internal::InheritanceChain<T>::Get(env);
+  napi_value object;
+  s = napi_new_instance(env, constructor, 1, &external, &object);
+  if (s != napi_ok)
+    return s;
+  // Wrap the |ptr| into JS object.
+  auto* data = internal::Wrap<T>::Do(ptr);
+  using DataType = decltype(data);
+  s = napi_wrap(env, object, data, [](napi_env env, void* data, void* ptr) {
+    if (internal::CanCachePointer<T>::value)
+      InstanceData::Get(env)->DeleteWeakRef<T>(ptr);
+    internal::Finalize<T>::Do(static_cast<DataType>(data));
+  }, ptr, nullptr);
+  if (s != napi_ok) {
+    internal::Finalize<T>::Do(data);
+    return s;
+  }
+  // Save weak reference.
+  if (internal::CanCachePointer<T>::value)
+    instance_data->AddWeakRef<T>(ptr, object);
+  *result = object;
+  return napi_ok;
+}
+
 // Default converter for pointers.
 template<typename T>
 struct Type<T*, std::enable_if_t<!std::is_const_v<T> &&
@@ -39,41 +80,7 @@ struct Type<T*, std::enable_if_t<!std::is_const_v<T> &&
                   "defined.");
     if (!ptr)
       return napi_get_null(env, result);
-    InstanceData* instance_data = InstanceData::Get(env);
-    if (internal::CanCachePointer<T>::value) {
-      // Check if there is already a JS object created.
-      if (instance_data->GetWeakRef<T>(ptr, result))
-        return napi_ok;
-    }
-    // Pass an External to indicate it is called from native code.
-    napi_value external;
-    napi_status s = napi_create_external(env, internal::GetConstructorKey(),
-                                         nullptr, nullptr, &external);
-    if (s != napi_ok)
-      return s;
-    // Create a JS object with "new Class(external)".
-    napi_value constructor = internal::InheritanceChain<T>::Get(env);
-    napi_value object;
-    s = napi_new_instance(env, constructor, 1, &external, &object);
-    if (s != napi_ok)
-      return s;
-    // Wrap the |ptr| into JS object.
-    auto* data = internal::Wrap<T>::Do(ptr);
-    using DataType = decltype(data);
-    s = napi_wrap(env, object, data, [](napi_env env, void* data, void* ptr) {
-      if (internal::CanCachePointer<T>::value)
-        InstanceData::Get(env)->DeleteWeakRef<T>(ptr);
-      internal::Finalize<T>::Do(static_cast<DataType>(data));
-    }, ptr, nullptr);
-    if (s != napi_ok) {
-      internal::Finalize<T>::Do(data);
-      return s;
-    }
-    // Save weak reference.
-    if (internal::CanCachePointer<T>::value)
-      instance_data->AddWeakRef<T>(ptr, object);
-    *result = object;
-    return napi_ok;
+    return ManagePointerInJSWrapper(env, ptr, result);
   }
   static inline std::optional<T*> FromNode(napi_env env, napi_value value) {
     void* result;
