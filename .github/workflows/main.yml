@@ -21,6 +21,9 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
+      - name: Install Python Dependencies
+        run: python -m pip install setuptools
+
       - name: Checkout
         uses: actions/checkout@v3
 
