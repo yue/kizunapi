@@ -16,7 +16,7 @@ namespace internal {
 // Get the base name of a type.
 template<typename T, typename Enable = void>
 struct TopClass {
-  static constexpr const char* name = Type<T>::name;
+  static constexpr const char* name = Type<std::remove_cv_t<T>>::name;
 };
 
 template<typename T>

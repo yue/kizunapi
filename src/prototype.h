@@ -27,8 +27,9 @@ struct Type<Class<T>> {
 
 // Default converter for pointers.
 template<typename T>
-struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
-                                        std::is_class<Type<T>>::value>::type> {
+struct Type<T*, std::enable_if_t<!std::is_const_v<T> &&
+                                 std::is_class_v<T> &&
+                                 std::is_class_v<Type<T>>>> {
   static constexpr const char* name = Type<T>::name;
   static inline napi_status ToNode(napi_env env, T* ptr, napi_value* result) {
     static_assert(internal::HasWrap<T>::value &&
@@ -86,6 +87,18 @@ struct Type<T*, typename std::enable_if<std::is_class<T>::value &&
       return napi_generic_failure;
     *out = ptr;
     return napi_ok;
+  }
+};
+
+// Default converter for const pointers.
+template<typename T>
+struct Type<T*, std::enable_if_t<std::is_const_v<T> &&
+                                 std::is_class_v<T> &&
+                                 std::is_class_v<Type<T>>>> {
+  static constexpr const char* name = Type<std::decay_t<T>>::name;
+  static inline napi_status ToNode(napi_env env, T* ptr, napi_value* result) {
+    return ki::Type<std::decay_t<T>*>::ToNode(
+        env, const_cast<std::decay_t<T>*>(ptr), result);
   }
 };
 

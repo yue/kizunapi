@@ -38,27 +38,28 @@ template<typename, typename = void>
 struct HasWrap : std::false_type {};
 
 template<typename T>
-struct HasWrap<T, void_t<decltype(TypeBridge<T>::Wrap)>> : std::true_type {};
+struct HasWrap<T, void_t<decltype(TypeBridge<std::decay_t<T>>::Wrap)>>
+    : std::true_type {};
 
 template<typename, typename = void>
 struct HasUnwrap : std::false_type {};
 
 template<typename T>
-struct HasUnwrap<T, void_t<decltype(TypeBridge<T>::Unwrap)>>
+struct HasUnwrap<T, void_t<decltype(TypeBridge<std::decay_t<T>>::Unwrap)>>
     : std::true_type {};
 
 template<typename, typename = void>
 struct HasFinalize : std::false_type {};
 
 template<typename T>
-struct HasFinalize<T, void_t<decltype(TypeBridge<T>::Finalize)>>
+struct HasFinalize<T, void_t<decltype(TypeBridge<std::decay_t<T>>::Finalize)>>
     : std::true_type {};
 
 template<typename, typename = void>
 struct HasDestructor : std::false_type {};
 
 template<typename T>
-struct HasDestructor<T, void_t<decltype(Type<T>::Destructor)>>
+struct HasDestructor<T, void_t<decltype(Type<std::decay_t<T>>::Destructor)>>
     : std::true_type {};
 
 // Whether the JS object can be cached using the pointer as key.
@@ -70,7 +71,8 @@ template<typename, typename = void>
 struct CanCachePointer : std::true_type {};
 
 template<typename T>
-struct CanCachePointer<T, void_t<decltype(TypeBridge<T>::can_cache_pointer)>> {
+struct CanCachePointer<
+    T, void_t<decltype(TypeBridge<std::decay_t<T>>::can_cache_pointer)>> {
   static constexpr bool value = TypeBridge<T>::can_cache_pointer;
 };
 
