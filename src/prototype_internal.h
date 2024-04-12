@@ -218,13 +218,13 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     if (IsCalledFromConverter(args))
       return nullptr;
     // Invoke native constructor.
-    T* ptr = CallbackInvoker<Sig>::Invoke(&args);
-    if (!ptr) {
+    std::optional<T*> ptr = CallbackInvoker<Sig>::Invoke(&args);
+    if (!ptr || !ptr.value()) {
       napi_throw_error(env, nullptr, "Unable to invoke constructor.");
       return nullptr;
     }
     // Then wrap the native pointer.
-    auto* data = Wrap<T>::Do(ptr);
+    auto* data = Wrap<T>::Do(ptr.value());
     using DataType = decltype(data);
     napi_status s = napi_wrap(env, args.This(), data,
                               [](napi_env env, void* data, void* ptr) {
@@ -232,15 +232,15 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
         InstanceData::Get(env)->DeleteWeakRef<T>(ptr);
       Finalize<T>::Do(static_cast<DataType>(data));
       Destruct<T>::Do(static_cast<T*>(ptr));
-    }, ptr, nullptr);
+    }, ptr.value(), nullptr);
     if (s != napi_ok) {
       Finalize<T>::Do(data);
-      Destruct<T>::Do(ptr);
+      Destruct<T>::Do(ptr.value());
       napi_throw_error(env, nullptr, "Unable to wrap native object.");
     }
     // Save weak reference.
     if (internal::CanCachePointer<T>::value)
-      InstanceData::Get(env)->AddWeakRef<T>(ptr, args.This());
+      InstanceData::Get(env)->AddWeakRef<T>(ptr.value(), args.This());
     return nullptr;
   }
 };

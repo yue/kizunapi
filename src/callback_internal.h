@@ -214,7 +214,7 @@ struct CallbackInvoker {};
 template<typename ReturnType, typename... ArgTypes>
 struct CallbackInvoker<ReturnType(ArgTypes...)> {
   using HolderT = CallbackHolder<ReturnType(ArgTypes...)>;
-  using ReturnLocalType = typename std::decay<ReturnType>::type;
+  using ReturnLocalType = std::optional<std::decay_t<ReturnType>>;
   static inline ReturnLocalType Invoke(napi_env env, napi_callback_info info) {
     Arguments args(env, info);
     return Invoke(&args);
@@ -235,11 +235,42 @@ struct CallbackInvoker<ReturnType(ArgTypes...)> {
     if (!invoker.IsOK()) {
       if (success)
         *success = false;
-      return ReturnLocalType();
+      return std::nullopt;
     }
     if (success)
       *success = true;
     return invoker.DispatchToCallback(holder->callback);
+  }
+};
+
+template<typename... ArgTypes>
+struct CallbackInvoker<void(ArgTypes...)> {
+  using HolderT = CallbackHolder<void(ArgTypes...)>;
+  static inline void Invoke(napi_env env, napi_callback_info info) {
+    Arguments args(env, info);
+    Invoke(&args);
+  }
+  static inline void Invoke(napi_env env, napi_callback_info info,
+                            const HolderT* holder) {
+    Arguments args(env, info);
+    Invoke(&args, holder);
+  }
+  static inline void Invoke(Arguments* args) {
+    Invoke(args, static_cast<HolderT*>(args->Data()));
+  }
+  static inline void Invoke(Arguments* args,
+                            const HolderT* holder,
+                            bool* success = nullptr) {
+    using Indices = typename IndicesGenerator<sizeof...(ArgTypes)>::type;
+    Invoker<Indices, ArgTypes...> invoker(args, holder->flags);
+    if (!invoker.IsOK()) {
+      if (success)
+        *success = false;
+      return;
+    }
+    if (success)
+      *success = true;
+    invoker.DispatchToCallback(holder->callback);
   }
 };
 
