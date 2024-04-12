@@ -65,6 +65,42 @@ struct Type<void*> {
 };
 
 template<>
+struct Type<int8_t> {
+  static constexpr const char* name = "Integer";
+  static inline napi_status ToNode(napi_env env,
+                                   int8_t value,
+                                   napi_value* result) {
+    return napi_create_int32(env, value, result);
+  }
+  static napi_status FromNode(napi_env env, napi_value value, int8_t* out) {
+    int32_t val;
+    napi_status s = napi_get_value_int32(env, value, &val);
+    if (s != napi_ok)
+      return s;
+    *out = static_cast<int8_t>(val);
+    return napi_ok;
+  }
+};
+
+template<>
+struct Type<uint8_t> {
+  static constexpr const char* name = "Integer";
+  static inline napi_status ToNode(napi_env env,
+                                   uint8_t value,
+                                   napi_value* result) {
+    return napi_create_uint32(env, value, result);
+  }
+  static napi_status FromNode(napi_env env, napi_value value, uint8_t* out) {
+    uint32_t val;
+    napi_status s = napi_get_value_uint32(env, value, &val);
+    if (s != napi_ok)
+      return s;
+    *out = static_cast<uint8_t>(val);
+    return napi_ok;
+  }
+};
+
+template<>
 struct Type<int32_t> {
   static constexpr const char* name = "Integer";
   static inline napi_status ToNode(napi_env env,
