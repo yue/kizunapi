@@ -67,11 +67,7 @@ template<typename T>
 struct ArgConverter<std::optional<T>> {
   static inline std::optional<std::optional<T>> GetNext(
       Arguments* args, int flags, bool is_first) {
-    std::optional<T> out = ArgConverter<T>::GetNext(args, flags, is_first);
-    if (out)
-      return out;
-    else
-      return std::nullopt;
+    return ArgConverter<T>::GetNext(args, flags, is_first);
   }
 };
 
