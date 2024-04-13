@@ -76,6 +76,19 @@ class Arguments {
     return FromNode<T>(env_, argv_[next_++]);
   }
 
+  // Like GetNext, but does not increase |next_| if conversion failed.
+  template<typename T>
+  std::optional<T> TryGetNext() {
+    if (next_ >= Length()) {
+      insufficient_arguments_ = true;
+      return std::nullopt;
+    }
+    auto result = FromNode<T>(env_, argv_[next_]);
+    if (result)
+      next_++;
+    return result;
+  }
+
   // A helper to handle the cases where user wants to store a weak function
   // passed via arguments.
   template<typename Sig>
