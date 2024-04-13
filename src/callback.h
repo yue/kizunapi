@@ -82,9 +82,7 @@ struct MemberFunctionHolder {
 };
 
 template<typename T>
-struct Type<MemberFunctionHolder<T>,
-            std::enable_if_t<
-                internal::IsFunctionConversionSupported<T>::value>> {
+struct Type<MemberFunctionHolder<T>> {
   static constexpr const char* name = "Function";
   static inline napi_status ToNode(napi_env env, MemberFunctionHolder<T> value,
                                    napi_value* result) {
