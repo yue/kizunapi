@@ -62,12 +62,30 @@ struct ArgConverter {
   }
 };
 
-// Allow optional arguments.
+// Allow optional arguments at the end.
 template<typename T>
 struct ArgConverter<std::optional<T>> {
   static inline std::optional<std::optional<T>> GetNext(
       Arguments* args, int flags, bool is_first) {
-    return ArgConverter<T>::GetNext(args, flags, is_first);
+    std::optional<T> result = ArgConverter<T>::GetNext(args, flags, is_first);
+    if (!result && !args->NoMoreArgs())  // error if type mis-match
+      return std::nullopt;
+    return result;
+  }
+};
+
+// Allow optional variant at the end if it contains monostate.
+template<typename... ArgTypes>
+struct ArgConverter<std::variant<std::monostate, ArgTypes...>> {
+  using V = std::variant<std::monostate, ArgTypes...>;
+  static inline std::optional<V> GetNext(
+      Arguments* args, int flags, bool is_first) {
+    std::optional<V> result = args->GetNext<V>();
+    if (result)  // success conversion
+      return result;
+    if (args->NoMoreArgs())  // arg is omitted
+      return std::monostate();
+    return std::nullopt;
   }
 };
 

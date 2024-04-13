@@ -13,6 +13,7 @@
 #include <set>
 #include <string>
 #include <tuple>
+#include <variant>
 #include <vector>
 
 #include "src/template_util.h"
@@ -702,6 +703,54 @@ struct Type<std::tuple<ArgTypes...>> {
       SetArray(env, arr, tup,
                typename internal::IndicesGenerator<length>::type());
     return s;
+  }
+};
+
+// Converter for converting std::variant between js and C++.
+template<typename... ArgTypes>
+struct Type<std::variant<ArgTypes...>> {
+  using V = std::variant<ArgTypes...>;
+
+  static constexpr const char* name = "Variant";
+  static napi_status ToNode(napi_env env, const V& var, napi_value* result) {
+    napi_status s = napi_generic_failure;
+    std::visit([env, result, &s](const auto& arg) {
+      s = ki::ToNode<decltype(arg)>(env, arg, result);
+    }, var);
+    return s;
+  }
+  static inline std::optional<V> FromNode(napi_env env, napi_value value) {
+    return GetVar(env, value);
+  }
+
+ private:
+  template<std::size_t I = 0>
+  static std::optional<V> GetVar(napi_env env, napi_value value) {
+    if constexpr (I < std::variant_size_v<V>) {
+      using T = std::variant_alternative_t<I, V>;
+      std::optional<T> result = Type<T>::FromNode(env, value);
+      return result ? std::move(*result) : GetVar<I + 1>(env, value);
+    }
+    return std::nullopt;
+  }
+};
+
+// The monostate is a special type for std::variant, when a variant includes it,
+// we consider the type accepting undefined/null.
+template<>
+struct Type<std::monostate> {
+  static constexpr const char* name = "";  // no name for monostate
+  static napi_status ToNode(napi_env env, std::monostate, napi_value* result) {
+    return napi_get_undefined(env, result);
+  }
+  static inline std::optional<std::monostate> FromNode(napi_env env,
+                                                       napi_value value) {
+    napi_valuetype type;
+    if (napi_typeof(env, value, &type) != napi_ok)
+      return std::nullopt;
+    if (type == napi_boolean || type == napi_null)
+      return std::monostate();
+    return std::nullopt;
   }
 };
 

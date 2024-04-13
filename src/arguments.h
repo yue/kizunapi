@@ -117,6 +117,8 @@ class Arguments {
     napi_throw_type_error(env_, nullptr, ss.str().c_str());
   }
 
+  bool NoMoreArgs() const { return insufficient_arguments_; }
+
   napi_value This() const { return this_; }
   void* Data() const { return data_; }
   size_t Length() const { return argc_; }
