@@ -296,16 +296,16 @@ struct CallbackInvoker<void(ArgTypes...)> {
 template<typename Sig>
 struct ReturnToNode {
   static napi_value Invoke(napi_env env, napi_callback_info info) {
-    return ToNode(env, CallbackInvoker<Sig>::Invoke(env, info));
+    return ToNodeValue(env, CallbackInvoker<Sig>::Invoke(env, info));
   }
   static napi_value InvokeWithHolder(napi_env env, napi_callback_info info,
                                      const CallbackHolder<Sig>* holder) {
-    return ToNode(env, CallbackInvoker<Sig>::Invoke(env, info, holder));
+    return ToNodeValue(env, CallbackInvoker<Sig>::Invoke(env, info, holder));
   }
   static napi_value InvokeWithHolder(Arguments* args,
                                      const CallbackHolder<Sig>* holder,
                                      bool* success = nullptr) {
-    return ToNode(args->Env(),
+    return ToNodeValue(args->Env(),
                   CallbackInvoker<Sig>::Invoke(args, holder, success));
   }
 };
@@ -410,8 +410,11 @@ struct V8FunctionInvoker<ReturnType(ArgTypes...)> {
     napi_status s = napi_make_callback(env, nullptr, func, func, args.size(),
                                        args.empty() ? nullptr: &args.front(),
                                        &value);
-    if (s == napi_ok)
-      FromNode(env, value, &ret);
+    if (s == napi_ok) {
+      std::optional<ReturnType> result = FromNodeTo<ReturnType>(env, value);
+      if (result)
+        ret = std::move(*result);
+    }
     if (s == napi_pending_exception) {
       napi_value fatal_exception;
       napi_get_and_clear_last_exception(env, &fatal_exception);

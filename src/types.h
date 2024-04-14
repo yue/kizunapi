@@ -458,33 +458,14 @@ inline bool IsType(napi_env env, napi_value value, napi_valuetype target) {
 
 // Function helpers.
 template<typename T>
-inline napi_status ConvertToNode(napi_env env, const T& value,
-                                 napi_value* result) {
-  return Type<T>::ToNode(env, value, result);
-}
-
-template<typename T>
 inline napi_status ConvertToNode(napi_env env, T&& value,
                                  napi_value* result) {
   return Type<std::decay_t<T>>::ToNode(env, std::forward<T>(value), result);
 }
 
-// Optimized version for string iterals.
-template<size_t n>
-inline napi_status ConvertToNode(napi_env env, const char (&value)[n],
-                                 napi_value* result) {
-  return Type<char[n]>::ToNode(env, value, result);
-}
-
-template<size_t n>
-inline napi_status ConvertToNode(napi_env env, const char16_t (&value)[n],
-                                 napi_value* result) {
-  return Type<char16_t[n]>::ToNode(env, value, result);
-}
-
 // Convert from In to Out and ignore error.
 template<typename Out, typename In>
-inline napi_value ConvertIgnoringStatus(napi_env env, In&& value) {
+inline napi_value ToNodeValueFrom(napi_env env, In&& value) {
   napi_value result = nullptr;
   napi_status s = Type<Out>::ToNode(env, std::forward<In>(value), &result);
   // Return undefined on error.
@@ -494,45 +475,30 @@ inline napi_value ConvertIgnoringStatus(napi_env env, In&& value) {
 }
 
 template<typename T>
-inline napi_value ToNode(napi_env env, const T& value) {
-  return ConvertIgnoringStatus<T>(env, value);
+inline napi_value ToNodeValue(napi_env env, T&& value) {
+  return ToNodeValueFrom<std::decay_t<T>>(env, std::forward<T>(value));
 }
 
 template<typename T>
-inline napi_value ToNode(napi_env env, T&& value) {
-  return ConvertIgnoringStatus<std::decay_t<T>>(env, std::forward<T>(value));
-}
-
-template<typename T>
-inline napi_value ToNode(napi_env env, std::optional<T>&& value) {
+inline napi_value ToNodeValue(napi_env env, std::optional<T>&& value) {
   if (!value)
     return Undefined(env);
-  return ToNode(env, *value);
+  return ToNodeValue(env, *value);
 }
 
 template<size_t n>
-inline napi_value ToNode(napi_env env, const char (&value)[n]) {
-  return ConvertIgnoringStatus<char[n]>(env, value);
+inline napi_value ToNodeValue(napi_env env, const char (&value)[n]) {
+  return ToNodeValueFrom<char[n]>(env, value);
 }
 
 template<size_t n>
-inline napi_value ToNode(napi_env env, const char16_t (&value)[n]) {
-  return ConvertIgnoringStatus<char16_t[n]>(env, value);
+inline napi_value ToNodeValue(napi_env env, const char16_t (&value)[n]) {
+  return ToNodeValueFrom<char16_t[n]>(env, value);
 }
 
-// Keep compatibility with the old API.
+// The short version of FromNode.
 template<typename T>
-inline bool FromNode(napi_env env, napi_value value, T* out) {
-  std::optional<T> result = Type<T>::FromNode(env, value);
-  if (!result)
-    return false;
-  *out = std::move(*result);
-  return true;
-}
-
-// The modern version of FromNode.
-template<typename T>
-inline std::optional<T> FromNode(napi_env env, napi_value value) {
+inline std::optional<T> FromNodeTo(napi_env env, napi_value value) {
   return Type<T>::FromNode(env, value);
 }
 
@@ -575,7 +541,7 @@ struct Type<std::vector<T>> {
       napi_value el = nullptr;
       if (napi_get_element(env, value, i, &el) != napi_ok)
         return std::nullopt;
-      std::optional<T> out = Type<T>::FromNode(env, el);
+      std::optional<T> out = FromNodeTo<T>(env, el);
       if (!out)
         return std::nullopt;
       result.push_back(std::move(*out));
@@ -615,7 +581,7 @@ struct Type<std::set<T>> {
       napi_value el;
       if (napi_get_element(env, value, i, &el) != napi_ok)
         return std::nullopt;
-      std::optional<T> element = Type<T>::FromNode(env, el);
+      std::optional<T> element = FromNodeTo<T>(env, el);
       if (!element)
         return std::nullopt;
       result.insert(std::move(*element));
@@ -655,19 +621,18 @@ struct Type<T, std::enable_if_t<  // is map type
     napi_value property_names;
     if (napi_get_property_names(env, object, &property_names) != napi_ok)
       return std::nullopt;
-    std::optional<std::vector<napi_value>> keys =
-        Type<std::vector<napi_value>>::FromNode(env, property_names);
+    auto keys = FromNodeTo<std::vector<napi_value>>(env, property_names);
     if (!keys)
       return std::nullopt;
     T result;
     for (napi_value key : *keys) {
-      std::optional<K> k = Type<K>::FromNode(env, key);
+      std::optional<K> k = FromNodeTo<K>(env, key);
       if (!k)
         return std::nullopt;
       napi_value value;
       if (napi_get_property(env, object, key, &value) != napi_ok)
         return std::nullopt;
-      std::optional<V> v = Type<V>::FromNode(env, value);
+      std::optional<V> v = FromNodeTo<V>(env, value);
       if (!v)
         return std::nullopt;
       result.emplace(std::move(*k), std::move(*v));
@@ -729,7 +694,7 @@ struct Type<std::tuple<ArgTypes...>> {
     if (napi_get_element(env, arr, I, &value) != napi_ok)
       return false;
     using T = std::tuple_element_t<I, V>;
-    std::optional<T> result = Type<T>::FromNode(env, value);
+    std::optional<T> result = FromNodeTo<T>(env, value);
     if (!result)
       return false;
     std::get<I>(*tup) = std::move(*result);
@@ -750,7 +715,7 @@ struct Type<std::pair<T1, T2>> {
     return Type<std::tuple<T1, T2>>::ToNode(env, pair, result);
   }
   static inline std::optional<V> FromNode(napi_env env, napi_value value) {
-    auto tup = Type<std::tuple<T1, T2>>::FromNode(env, value);
+    auto tup = FromNodeTo<std::tuple<T1, T2>>(env, value);
     if (!tup)
       return std::nullopt;
     return V{std::move(std::get<0>(*tup)), std::move(std::get<1>(*tup))};
@@ -779,7 +744,7 @@ struct Type<std::variant<ArgTypes...>> {
   static std::optional<V> GetVar(napi_env env, napi_value value) {
     if constexpr (I < std::variant_size_v<V>) {
       using T = std::variant_alternative_t<I, V>;
-      std::optional<T> result = Type<T>::FromNode(env, value);
+      std::optional<T> result = FromNodeTo<T>(env, value);
       return result ? std::move(*result) : GetVar<I + 1>(env, value);
     }
     return std::nullopt;

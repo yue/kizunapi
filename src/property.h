@@ -144,7 +144,7 @@ inline napi_property_descriptor PropertyToDescriptor(
   // Initialize members to 0.
   napi_property_descriptor descriptor = {};
   // Translate Property to napi_property_descriptor.
-  descriptor.name = ToNode(env, prop.name);
+  descriptor.name = ToNodeValue(env, prop.name);
   descriptor.attributes = prop.attributes;
   descriptor.value = prop.value;
   if (prop.getter)

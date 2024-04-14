@@ -27,27 +27,36 @@ class Map : public Local {
 
   template<typename K, typename V>
   void Set(const K& key, const V& value) {
-    CallMethod(Env(), Value(), "set", ToNode(Env(), key), ToNode(Env(), value));
+    CallMethod(Env(), Value(),
+               "set",
+               ToNodeValue(Env(), key),
+               ToNodeValue(Env(), value));
   }
 
   template<typename K, typename V>
   bool Get(const K& key, V* out) const {
-    napi_value ret = CallMethod(Env(), Value(), "get", ToNode(Env(), key));
+    napi_value ret = CallMethod(Env(), Value(), "get", ToNodeValue(Env(), key));
     if (!ret || IsType(Env(), ret, napi_undefined))
       return false;
-    return FromNode(Env(), ret, out);
+    std::optional<V> result = FromNodeTo<V>(Env(), ret);
+    if (!result)
+      return false;
+    *out = std::move(*result);
+    return true;
   }
 
   template<typename K>
   bool Has(const K& key) const {
-    return FromNode<bool>(
+    return FromNodeTo<bool>(
         Env(),
-        CallMethod(Env(), Value(), "has", ToNode(Env(), key))).value_or(false);
+        CallMethod(Env(), Value(),
+                   "has",
+                   ToNodeValue(Env(), key))).value_or(false);
   }
 
   template<typename K>
   void Delete(const K& key) {
-    CallMethod(Env(), Value(), "delete", ToNode(Env(), key));
+    CallMethod(Env(), Value(), "delete", ToNodeValue(Env(), key));
   }
 
   template<typename K>

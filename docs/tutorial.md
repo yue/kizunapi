@@ -7,11 +7,11 @@ There is currently no API reference.
 
 ## Basic type conversions
 
-To convert types between C++ and JavaScript, you can use the `ki::ToNode` and
+To convert types between C++ and JavaScript, you can use the `ki::ToNodeValue` and
 `ki::FromNode` helpers:
 
 ```c++
-napi_value value = ki::ToNode(env, 8964);
+napi_value value = ki::ToNodeValue(env, 8964);
 
 int integer;
 bool success = ki::FromNode(env, value, &integer);
@@ -39,7 +39,7 @@ value and arguments will be converted automatically:
 
 ```c++
 std::function<std::string()> func = []() { return std::string("str"); };
-napi_value value = ki::ToNode(env, func);
+napi_value value = ki::ToNodeValue(env, func);
 
 std::function<int(int, int)> add;
 bool success = ki::FromNode(env, &add);
@@ -50,7 +50,7 @@ Function pointers work too:
 ```c++
 int Add(int a, int b) { return a + b; }
 
-napi_value add = ki::ToNode(env, &Add);
+napi_value add = ki::ToNodeValue(env, &Add);
 ```
 
 When passing member functions, the converted JavaScript function will use the
@@ -124,7 +124,7 @@ struct Type<Point> {
 }  // namespace ki
 
 Point p = {89, 64};
-napi_value object = ki::ToNode(env, p);
+napi_value object = ki::ToNodeValue(env, p);
 ```
 
 It is OK to ignore `ToNode` or `FromNode` method when the type only supports
@@ -271,7 +271,7 @@ ki::DefineProperties(env, exports,
 To set a value:
 
 ```c++
-ki::Property("value", ki::ToNode(env, "value"));
+ki::Property("value", ki::ToNodeValue(env, "value"));
 ```
 
 For member data of classes, you can pass pointers to them to set setter and
@@ -307,7 +307,7 @@ You can also pass the `napi_property_attributes` to set attributes, but please
 note that the `napi_static` is not supported:
 
 ```c++
-ki::Property("date", napi_writable | napi_enumerable, ki::ToNode(env, 8964));
+ki::Property("date", napi_writable | napi_enumerable, ki::ToNodeValue(env, 8964));
 ```
 
 ### Inheritance
@@ -341,7 +341,7 @@ bool success = ki::FromNode(env, &instance);
 But converting an C++ instance to JavaScript will fail with compilation error:
 
 ```c++
-ki::ToNode(env, new SimpleClass());  // does not compile
+ki::ToNodeValue(env, new SimpleClass());  // does not compile
 ```
 
 This is because the latter involves lifetime management of the C++ instances.

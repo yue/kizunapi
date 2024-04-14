@@ -14,7 +14,7 @@ T Passthrough(const T& value) {
 
 void run_types_tests(napi_env env, napi_value binding) {
   ki::Set(env, binding,
-          "value", ki::ToNode(env, "value"),
+          "value", ki::ToNodeValue(env, "value"),
           "null", nullptr,
           "integer", 123,
           "number", 3.14,

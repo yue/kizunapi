@@ -31,7 +31,7 @@ napi_value CallMethod(napi_env env, napi_value object, Name&& method,
   napi_value func;
   if (!ki::Get(env, object, std::forward<Name>(method), &func))
     return nullptr;
-  napi_value argv[] = {ToNode(env, args)...};
+  napi_value argv[] = {ToNodeValue(env, args)...};
   napi_value ret = nullptr;
   napi_call_function(env, object, func, sizeof...(args),
                      sizeof...(args) == 0 ? nullptr : argv, &ret);

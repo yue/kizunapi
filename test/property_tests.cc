@@ -73,7 +73,7 @@ struct Type<HasObjectMember> {
 void run_property_tests(napi_env env, napi_value binding) {
   ki::DefineProperties(
       env, binding,
-      ki::Property("value", ki::ToNode(env, "value")),
+      ki::Property("value", ki::ToNodeValue(env, "value")),
       ki::Property("number", ki::Getter(&Getter), ki::Setter(&Setter)));
   ki::Set(env, binding,
           "member", new SimpleMember,

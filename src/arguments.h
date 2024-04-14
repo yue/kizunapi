@@ -73,7 +73,7 @@ class Arguments {
       insufficient_arguments_ = true;
       return std::nullopt;
     }
-    return FromNode<T>(env_, argv_[next_++]);
+    return FromNodeTo<T>(env_, argv_[next_++]);
   }
 
   // Like GetNext, but does not increase |next_| if conversion failed.
@@ -83,7 +83,7 @@ class Arguments {
       insufficient_arguments_ = true;
       return std::nullopt;
     }
-    auto result = FromNode<T>(env_, argv_[next_]);
+    auto result = FromNodeTo<T>(env_, argv_[next_]);
     if (result)
       next_++;
     return result;
@@ -101,7 +101,7 @@ class Arguments {
 
   template<typename T>
   std::optional<T> GetThis() const {
-    return FromNode<T>(env_, this_);
+    return FromNodeTo<T>(env_, this_);
   }
 
   bool IsConstructorCall() const {

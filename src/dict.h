@@ -26,8 +26,8 @@ inline bool Set(napi_env env, napi_value object, Key&& key, Value&& value) {
     return false;
   return napi_ok == napi_set_property(
       env, object,
-      ki::ToNode(env, std::forward<Key>(key)),
-      ki::ToNode(env, std::forward<Value>(value)));
+      ki::ToNodeValue(env, std::forward<Key>(key)),
+      ki::ToNodeValue(env, std::forward<Value>(value)));
 }
 
 // Allow setting arbitrary key/value pairs.
@@ -44,7 +44,7 @@ template<typename Key, typename Value>
 inline bool Get(napi_env env, napi_value object, Key&& key, Value* out) {
   if (!internal::IsObject(env, object))
     return false;
-  napi_value v8_key = ToNode(env, std::forward<Key>(key));
+  napi_value v8_key = ToNodeValue(env, std::forward<Key>(key));
   // Check key before get, otherwise this method will always return true for
   // Key == napi_value.
   bool has;
@@ -54,7 +54,11 @@ inline bool Get(napi_env env, napi_value object, Key&& key, Value* out) {
   napi_value value;
   s = napi_get_property(env, object, v8_key, &value);
   assert(s == napi_ok);
-  return FromNode(env, value, out);
+  std::optional<Value> result = FromNodeTo<Value>(env, value);
+  if (!result)
+    return false;
+  *out = std::move(*result);
+  return true;
 }
 
 // Allow getting arbitrary values.
@@ -73,7 +77,7 @@ inline bool Delete(napi_env env, napi_value object, Key&& key) {
     return false;
   bool success;
   napi_status s = napi_delete_property(
-      env, object, ToNode(env, std::forward<Key>(key)), &success);
+      env, object, ToNodeValue(env, std::forward<Key>(key)), &success);
   return s == napi_ok && success;
 }
 
@@ -83,7 +87,7 @@ inline bool ReadOptions(napi_env env, napi_value object,
                         Key&& key, Value* out) {
   if (!internal::IsObject(env, object))
     return false;
-  napi_value v8_key = ToNode(env, std::forward<Key>(key));
+  napi_value v8_key = ToNodeValue(env, std::forward<Key>(key));
   bool has;
   napi_status s = napi_has_property(env, object, v8_key, &has);
   if (s != napi_ok || !has)
