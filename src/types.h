@@ -9,7 +9,6 @@
 
 #include <cstring>
 #include <optional>
-#include <map>
 #include <set>
 #include <string>
 #include <tuple>
@@ -625,11 +624,17 @@ struct Type<std::set<T>> {
   }
 };
 
-template<typename K, typename V>
-struct Type<std::map<K, V>> {
+// Converter for std::map/std::unordered_map.
+template<typename T>
+struct Type<T, std::enable_if_t<  // is map type
+                   std::is_same_v<typename T::value_type,
+                                  std::pair<const typename T::key_type,
+                                            typename T::mapped_type>>>> {
+  using K = typename T::key_type;
+  using V = typename T::mapped_type;
   static constexpr const char* name = "Object";
   static napi_status ToNode(napi_env env,
-                            const std::map<K, V>& dict,
+                            const T& dict,
                             napi_value* result) {
     napi_status s = napi_create_object(env, result);
     if (s == napi_ok) {
@@ -645,8 +650,8 @@ struct Type<std::map<K, V>> {
     }
     return s;
   }
-  static std::optional<std::map<K, V>> FromNode(napi_env env,
-                                                napi_value object) {
+  static std::optional<T> FromNode(napi_env env,
+                                   napi_value object) {
     napi_value property_names;
     if (napi_get_property_names(env, object, &property_names) != napi_ok)
       return std::nullopt;
@@ -654,8 +659,7 @@ struct Type<std::map<K, V>> {
         Type<std::vector<napi_value>>::FromNode(env, property_names);
     if (!keys)
       return std::nullopt;
-    std::map<K, V> result;
-    result.reserve(keys->size());
+    T result;
     for (napi_value key : *keys) {
       std::optional<K> k = Type<K>::FromNode(env, key);
       if (!k)

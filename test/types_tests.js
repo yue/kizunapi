@@ -12,14 +12,17 @@ exports.runTests = (assert, binding) => {
   assert.deepStrictEqual(binding.tuple, [89, true, '64'], 'ToNode tuple')
   assert.deepStrictEqual(binding.pair, ['a', 'pair'], 'ToNode pair')
   assert.equal(binding.variant, 8964, 'ToNode variant')
+  assert.deepStrictEqual(binding.map, {"123": 456}, 'ToNode map')
   assert.deepStrictEqual(binding.passTuple([89, 64]), [89, 64],
-                         'ToNode tuple to cpp')
+                         'FromNode tuple')
   assert.deepStrictEqual(binding.passPair([89, 64]), [89, 64],
-                         'ToNode pair to cpp')
+                         'FromNode pair')
   assert.deepStrictEqual(binding.passVariant('str'), 'str',
-                         'ToNode variant str to cpp')
-  assert.equal(binding.passVariant(2), 2, 'ToNode variant number to cpp')
+                         'FromNode variant str')
+  assert.equal(binding.passVariant(2), 2, 'FromNode variant number')
   assert.throws(() => binding.passVariant(false),
                 /Error processing argument at index 0/,
-                'ToNode variant throws')
+                'FromNode variant throws')
+  assert.deepStrictEqual(binding.passMap({'str': 123}), {'str': 123},
+                         'FromNode map')
 }
