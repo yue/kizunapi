@@ -3,6 +3,15 @@
 
 #include <kizunapi.h>
 
+namespace {
+
+template<typename T>
+T Passthrough(const T& value) {
+  return value;
+}
+
+}  // namespace
+
 void run_types_tests(napi_env env, napi_value binding) {
   ki::Set(env, binding,
           "value", ki::ToNode(env, "value"),
@@ -14,5 +23,9 @@ void run_types_tests(napi_env env, napi_value binding) {
           "ustring", std::u16string(u"ustring"),
           "charptr", "チャーポインター",
           "ucharptr", u"ucharptr",
-          "symbol", ki::Symbol("sym"));
+          "symbol", ki::Symbol("sym"),
+          "tuple", std::tuple<int, bool, std::string>(89, true, "64"),
+          "variant", std::variant<bool, int>(8964),
+          "passTuple", &Passthrough<std::tuple<int, int>>,
+          "passVariant", &Passthrough<std::variant<float, std::string>>);
 }

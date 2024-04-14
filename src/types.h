@@ -514,6 +514,7 @@ inline napi_value ToNode(napi_env env, const char16_t (&value)[n]) {
   return ConvertIgnoringStatus<char16_t[n]>(env, value);
 }
 
+// Keep compatibility with the old API.
 template<typename T>
 inline bool FromNode(napi_env env, napi_value value, T* out) {
   std::optional<T> result = Type<T>::FromNode(env, value);
@@ -664,45 +665,67 @@ struct Type<std::map<K, V>> {
   }
 };
 
-namespace internal {
-
-// Helpers used to converting tuple to Array.
-inline void SetArray(napi_env, napi_value, int) {
-}
-
-template<typename ArgType, typename... ArgTypes>
-inline void SetArray(napi_env env,
-                     napi_value arr,
-                     int i, const ArgType& arg,
-                     ArgTypes... args) {
-  if (napi_set_element(env, arr, i, ToNode(env, arg)) != napi_ok)
-    return;
-  SetArray(env, arr, i + 1, args...);
-}
-
-template<typename T, size_t... indices>
-inline void SetArray(napi_env env,
-                     napi_value arr,
-                     const T& tup,
-                     IndicesHolder<indices...>) {
-  SetArray(env, arr, 0, std::get<indices>(tup)...);
-}
-
-}  // namespace internal
-
 template<typename... ArgTypes>
 struct Type<std::tuple<ArgTypes...>> {
-  static constexpr const char* name = "Array";
-  static napi_status ToNode(napi_env env,
-                            const std::tuple<ArgTypes...>& tup,
-                            napi_value* result) {
+  using V = std::tuple<ArgTypes...>;
+
+  static constexpr const char* name = "Tuple";
+  static napi_status ToNode(napi_env env, const V& tup, napi_value* result) {
     constexpr size_t length = sizeof...(ArgTypes);
     napi_value arr;
     napi_status s = napi_create_array_with_length(env, length, &arr);
-    if (s == napi_ok)
-      SetArray(env, arr, tup,
-               typename internal::IndicesGenerator<length>::type());
-    return s;
+    if (s != napi_ok)
+      return s;
+    s = SetVar(env, arr, tup);
+    if (s != napi_ok)
+      return s;
+    *result = arr;
+    return napi_ok;
+  }
+  static std::optional<V> FromNode(napi_env env, napi_value value) {
+    if (!IsArray(env, value))
+      return std::nullopt;
+    uint32_t length;
+    if (napi_get_array_length(env, value, &length) != napi_ok)
+      return std::nullopt;
+    if (length != sizeof...(ArgTypes))
+      return std::nullopt;
+    V result;
+    if (!GetVar(env, value, &result))
+      return std::nullopt;
+    return result;
+  }
+
+ private:
+  template<std::size_t I = 0>
+  static napi_status SetVar(napi_env env, napi_value arr, const V& tup) {
+    napi_value value;
+    napi_status s = ConvertToNode(env, std::get<I>(tup), &value);
+    if (s != napi_ok)
+      return s;
+    s = napi_set_element(env, arr, I, value);
+    if (s != napi_ok)
+      return s;
+    if constexpr (I + 1 >= sizeof...(ArgTypes))
+      return napi_ok;
+    else
+      return SetVar<I + 1>(env, arr, tup);
+  }
+
+  template<std::size_t I = 0>
+  static bool GetVar(napi_env env, napi_value arr, V* tup) {
+    napi_value value;
+    if (napi_get_element(env, arr, I, &value) != napi_ok)
+      return false;
+    using T = std::tuple_element_t<I, V>;
+    std::optional<T> result = Type<T>::FromNode(env, value);
+    if (!result)
+      return false;
+    std::get<I>(*tup) = std::move(*result);
+    if constexpr (I + 1 >= sizeof...(ArgTypes))
+      return true;
+    else
+      return GetVar<I + 1>(env, arr, tup);
   }
 };
 
@@ -715,7 +738,7 @@ struct Type<std::variant<ArgTypes...>> {
   static napi_status ToNode(napi_env env, const V& var, napi_value* result) {
     napi_status s = napi_generic_failure;
     std::visit([env, result, &s](const auto& arg) {
-      s = ki::ToNode<decltype(arg)>(env, arg, result);
+      s = ConvertToNode(env, arg, result);
     }, var);
     return s;
   }
