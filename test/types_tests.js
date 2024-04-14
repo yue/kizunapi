@@ -10,9 +10,12 @@ exports.runTests = (assert, binding) => {
   assert.equal(binding.ucharptr, 'ucharptr', 'ToNode ucharptr')
   assert.equal(typeof binding.symbol, 'symbol', 'ToNode symbol')
   assert.deepStrictEqual(binding.tuple, [89, true, '64'], 'ToNode tuple')
+  assert.deepStrictEqual(binding.pair, ['a', 'pair'], 'ToNode pair')
   assert.equal(binding.variant, 8964, 'ToNode variant')
   assert.deepStrictEqual(binding.passTuple([89, 64]), [89, 64],
                          'ToNode tuple to cpp')
+  assert.deepStrictEqual(binding.passPair([89, 64]), [89, 64],
+                         'ToNode pair to cpp')
   assert.deepStrictEqual(binding.passVariant('str'), 'str',
                          'ToNode variant str to cpp')
   assert.equal(binding.passVariant(2), 2, 'ToNode variant number to cpp')

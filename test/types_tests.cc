@@ -25,7 +25,9 @@ void run_types_tests(napi_env env, napi_value binding) {
           "ucharptr", u"ucharptr",
           "symbol", ki::Symbol("sym"),
           "tuple", std::tuple<int, bool, std::string>(89, true, "64"),
+          "pair", std::pair<std::string, std::string>("a", "pair"),
           "variant", std::variant<bool, int>(8964),
           "passTuple", &Passthrough<std::tuple<int, int>>,
+          "passPair", &Passthrough<std::pair<int, int>>,
           "passVariant", &Passthrough<std::variant<float, std::string>>);
 }

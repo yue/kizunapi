@@ -729,6 +729,23 @@ struct Type<std::tuple<ArgTypes...>> {
   }
 };
 
+template<typename T1, typename T2>
+struct Type<std::pair<T1, T2>> {
+  using V = std::pair<T1, T2>;
+  static constexpr const char* name = "Pair";
+  static inline napi_status ToNode(napi_env env,
+                                   const V& pair,
+                                   napi_value* result) {
+    return Type<std::tuple<T1, T2>>::ToNode(env, pair, result);
+  }
+  static inline std::optional<V> FromNode(napi_env env, napi_value value) {
+    auto tup = Type<std::tuple<T1, T2>>::FromNode(env, value);
+    if (!tup)
+      return std::nullopt;
+    return V{std::move(std::get<0>(*tup)), std::move(std::get<1>(*tup))};
+  }
+};
+
 // Converter for converting std::variant between js and C++.
 template<typename... ArgTypes>
 struct Type<std::variant<ArgTypes...>> {
