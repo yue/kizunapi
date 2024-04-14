@@ -211,6 +211,13 @@ struct Type<size_t> {
                                    napi_value* result) {
     return napi_create_int64(env, value, result);
   }
+  static inline std::optional<size_t> FromNode(napi_env env,
+                                               napi_value value) {
+    int64_t result;
+    if (napi_get_value_int64(env, value, &result) == napi_ok)
+      return result;
+    return std::nullopt;
+  }
 };
 #endif
 
