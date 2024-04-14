@@ -95,7 +95,11 @@ inline bool ReadOptions(napi_env env, napi_value object,
   napi_value value;
   s = napi_get_property(env, object, v8_key, &value);
   assert(s == napi_ok);
-  return FromNode(env, value, out);
+  std::optional<Value> result = FromNodeTo<Value>(env, value);
+  if (!result)
+    return false;
+  *out = std::move(*result);
+  return true;
 }
 
 template<typename Key, typename Value, typename... ArgTypes>

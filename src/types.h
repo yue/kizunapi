@@ -463,37 +463,14 @@ inline napi_status ConvertToNode(napi_env env, T&& value,
   return Type<std::decay_t<T>>::ToNode(env, std::forward<T>(value), result);
 }
 
-// Convert from In to Out and ignore error.
-template<typename Out, typename In>
-inline napi_value ToNodeValueFrom(napi_env env, In&& value) {
+template<typename In>
+inline napi_value ToNodeValue(napi_env env, In&& value) {
   napi_value result = nullptr;
-  napi_status s = Type<Out>::ToNode(env, std::forward<In>(value), &result);
+  napi_status s = ConvertToNode(env, std::forward<In>(value), &result);
   // Return undefined on error.
   if (s != napi_ok)
     return Undefined(env);
   return result;
-}
-
-template<typename T>
-inline napi_value ToNodeValue(napi_env env, T&& value) {
-  return ToNodeValueFrom<std::decay_t<T>>(env, std::forward<T>(value));
-}
-
-template<typename T>
-inline napi_value ToNodeValue(napi_env env, std::optional<T>&& value) {
-  if (!value)
-    return Undefined(env);
-  return ToNodeValue(env, *value);
-}
-
-template<size_t n>
-inline napi_value ToNodeValue(napi_env env, const char (&value)[n]) {
-  return ToNodeValueFrom<char[n]>(env, value);
-}
-
-template<size_t n>
-inline napi_value ToNodeValue(napi_env env, const char16_t (&value)[n]) {
-  return ToNodeValueFrom<char16_t[n]>(env, value);
 }
 
 // The short version of FromNode.
@@ -507,8 +484,15 @@ inline std::optional<T> FromNodeTo(napi_env env, napi_value value) {
 template<typename T>
 struct Type<std::optional<T>> {
   static constexpr const char* name = Type<T>::name;
-  // There is no converter defined, so we can implement optional argument by
-  // using std::optional<T> as parameter.
+  static napi_status ToNode(napi_env env,
+                            const std::optional<T>& value,
+                            napi_value* result) {
+    if (!value)
+      return napi_get_undefined(env, result);
+    return ConvertToNode(env, *value, result);
+  }
+  // There is FromNode defined by default, as it is usually automatically
+  // handled by ArgConverter.
 };
 
 template<typename T>

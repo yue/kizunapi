@@ -12,19 +12,6 @@ namespace ki {
 
 namespace internal {
 
-// A clone of C++17 std::void_t.
-// Unlike the original version, we need |make_void| as a helper struct to avoid
-// a C++14 defect.
-// ref: http://en.cppreference.com/w/cpp/types/void_t
-// ref: http://open-std.org/JTC1/SC22/WG21/docs/cwg_defects.html#1558
-template<typename...>
-struct make_void {
-  using type = void;
-};
-
-template<typename... Ts>
-using void_t = typename make_void<Ts...>::type;
-
 // Check if all the types are the same.
 template<template<typename, typename> class checker, typename... Ts>
 struct is_all : std::true_type {};
@@ -108,7 +95,8 @@ template <typename Functor, typename SFINAE = void>
 struct IsConvertibleToRunType : std::false_type {};
 
 template <typename Callable>
-struct IsConvertibleToRunType<Callable, void_t<decltype(&Callable::operator())>>
+struct IsConvertibleToRunType<Callable,
+                              std::void_t<decltype(&Callable::operator())>>
     : std::is_convertible<Callable, ExtractCallableRunType<Callable>*> {};
 
 // FunctorTraits<>

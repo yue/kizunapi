@@ -72,6 +72,15 @@ struct Type<T*, std::enable_if_t<!std::is_const_v<T> &&
                                  std::is_class_v<T> &&
                                  std::is_class_v<Type<T>>>> {
   static constexpr const char* name = Type<T>::name;
+
+ private:
+  // Mark the direct ToNode/FromNode methods as private to force users to use
+  // helper functions.
+  template<typename U>
+  friend napi_status ConvertToNode(napi_env env, U&& value, napi_value* result);
+  template<typename U>
+  friend std::optional<U> FromNodeTo(napi_env env, napi_value value);
+
   static inline napi_status ToNode(napi_env env, T* ptr, napi_value* result) {
     static_assert(internal::HasWrap<T>::value &&
                   internal::HasFinalize<T>::value,
@@ -82,6 +91,7 @@ struct Type<T*, std::enable_if_t<!std::is_const_v<T> &&
       return napi_get_null(env, result);
     return ManagePointerInJSWrapper(env, ptr, result);
   }
+
   static inline std::optional<T*> FromNode(napi_env env, napi_value value) {
     void* result;
     if (napi_unwrap(env, value, &result) != napi_ok)
@@ -102,8 +112,7 @@ struct Type<T*, std::enable_if_t<std::is_const_v<T> &&
                                  std::is_class_v<Type<T>>>> {
   static constexpr const char* name = Type<std::decay_t<T>>::name;
   static inline napi_status ToNode(napi_env env, T* ptr, napi_value* result) {
-    return ki::Type<std::decay_t<T>*>::ToNode(
-        env, const_cast<std::decay_t<T>*>(ptr), result);
+    return ConvertToNode(env, const_cast<std::decay_t<T>*>(ptr), result);
   }
 };
 
