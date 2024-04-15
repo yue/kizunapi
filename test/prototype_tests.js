@@ -77,4 +77,18 @@ exports.runTests = async (assert, binding, {runInNewScope, gcUntil, addFinalizer
   })
   await gcUntil(() => weakFactoryCollected)
   assert.ok(true, 'Prototype wrap and unwrap internal pointer from js')
+
+  const {Copiable, passThroughCopiable} = binding
+
+  let copiableCollected
+  runInNewScope(() => {
+    const c = new Copiable()
+    assert.equal(Copiable.count(), 1, 'Prototype allow pass by value')
+    addFinalizer(c, () => copiableCollected = true)
+  })
+  await gcUntil(() => copiableCollected)
+  assert.equal(Copiable.count(), 0, 'Prototype default finalize for value')
+
+  passThroughCopiable(new Copiable)
+  assert.equal(Copiable.count(), 2, 'Prototype convert value to C++')
 }

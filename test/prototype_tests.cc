@@ -116,14 +116,30 @@ class WeakFactory {
   RefCounted* ref_;
 };
 
+class Copiable {
+ public:
+  static int count_;
+
+  static int Count() { return count_; }
+
+  Copiable() { count_++; }
+  Copiable(const Copiable&) { count_++; }
+  Copiable(Copiable&&) { count_++; }
+
+  ~Copiable() { count_--; }
+};
+
+// static
+int Copiable::count_ = 0;
+
 template<typename T>
 int64_t PointerOf(T* ptr) {
   return reinterpret_cast<int64_t>(ptr);;
 }
 
 template<typename T>
-T* PassThrough(T* ptr) {
-  return ptr;
+T PassThrough(T val) {
+  return val;
 }
 
 }  // namespace
@@ -241,6 +257,17 @@ struct Type<WeakFactory> {
   }
 };
 
+template<>
+struct Type<Copiable> : public AllowPassByValue<Copiable> {
+  static constexpr const char* name = "Copiable";
+  static Copiable* Constructor() {
+    return new Copiable;
+  }
+  static void Define(napi_env env, napi_value constructor, napi_value) {
+    Set(env, constructor, "count", &Copiable::Count);
+  }
+};
+
 }  // namespace ki
 
 void run_prototype_tests(napi_env env, napi_value binding) {
@@ -254,7 +281,7 @@ void run_prototype_tests(napi_env env, napi_value binding) {
   ki::Set(env, binding,
           "refCounted", ref_counted,
           "RefCounted", ki::Class<RefCounted>(),
-          "passThroughRefCounted", &PassThrough<RefCounted>);
+          "passThroughRefCounted", &PassThrough<RefCounted*>);
 
   ki::Set(env, binding,
           "Child", ki::Class<Child>(),
@@ -267,4 +294,8 @@ void run_prototype_tests(napi_env env, napi_value binding) {
   ki::Set(env, binding,
           "weakFactory", factory,
           "WeakFactory", ki::Class<WeakFactory>());
+
+  ki::Set(env, binding,
+          "Copiable", ki::Class<Copiable>(),
+          "passThroughCopiable", &PassThrough<Copiable>);
 }

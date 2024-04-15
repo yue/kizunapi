@@ -9,6 +9,14 @@
 
 namespace ki {
 
+template<typename>
+struct AllowPassByValue;
+
+// Check if Type<T> inherits from AllowPassByValue<T>.
+template<typename T>
+inline constexpr bool can_pass_by_value_v =
+    std::is_base_of_v<AllowPassByValue<T>, Type<T>>;
+
 namespace internal {
 
 // Return a key used to indicate whether the constructor should be called.
@@ -38,30 +46,32 @@ template<typename, typename = void>
 struct HasWrap : std::false_type {};
 
 template<typename T>
-struct HasWrap<T, std::void_t<decltype(TypeBridge<std::decay_t<T>>::Wrap)>>
+struct HasWrap<T, std::void_t<decltype(TypeBridge<T>::Wrap)>>
     : std::true_type {};
 
 template<typename, typename = void>
 struct HasUnwrap : std::false_type {};
 
 template<typename T>
-struct HasUnwrap<T, std::void_t<decltype(TypeBridge<std::decay_t<T>>::Unwrap)>>
+struct HasUnwrap<T, std::void_t<decltype(TypeBridge<T>::Unwrap)>>
     : std::true_type {};
 
-template<typename, typename = void>
-struct HasFinalize : std::false_type {};
+template<typename T, typename = void>
+struct HasFinalize {
+  // For class that does not have Finalize defined but inherits from the
+  // AllowPassByValue class, we have a default Finalize for them.
+  static constexpr bool value = can_pass_by_value_v<T>;
+};
 
 template<typename T>
-struct HasFinalize<T,
-                   std::void_t<decltype(TypeBridge<std::decay_t<T>>::Finalize)>>
+struct HasFinalize<T, std::void_t<decltype(TypeBridge<T>::Finalize)>>
     : std::true_type {};
 
 template<typename, typename = void>
 struct HasDestructor : std::false_type {};
 
 template<typename T>
-struct HasDestructor<T,
-                     std::void_t<decltype(Type<std::decay_t<T>>::Destructor)>>
+struct HasDestructor<T, std::void_t<decltype(Type<T>::Destructor)>>
     : std::true_type {};
 
 // Whether the JS object can be cached using the pointer as key.
@@ -119,6 +129,10 @@ struct Unwrap<T, typename std::enable_if<is_function_pointer<
 template<typename T, typename Enable = void>
 struct Finalize {
   static inline void Do(void* ptr) {
+    // For classes that inherit from AllowPassByValue, use delete by default.
+    if constexpr (can_pass_by_value_v<T>) {
+      delete static_cast<T*>(ptr);
+    }
   }
 };
 

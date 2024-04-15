@@ -116,6 +116,22 @@ struct Type<T*, std::enable_if_t<std::is_const_v<T> &&
   }
 };
 
+// For classes that want to allow converting values instead of just pointers
+// between JS and C++, they can inherite this class for automatic convertion
+// implemented via copying.
+template<typename T>
+struct AllowPassByValue {
+  static inline napi_status ToNode(napi_env env, T value, napi_value* result) {
+    return ManagePointerInJSWrapper(env, new T(std::move(value)), result);
+  }
+  static inline std::optional<T> FromNode(napi_env env, napi_value value) {
+    std::optional<T*> ptr = ki::FromNodeTo<T*>(env, value);
+    if (!ptr)
+      return std::nullopt;
+    return *ptr.value();
+  }
+};
+
 }  // namespace ki
 
 #endif  // SRC_PROTOTYPE_H_
