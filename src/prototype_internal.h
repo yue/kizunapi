@@ -84,8 +84,19 @@ struct CanCachePointer : std::true_type {};
 
 template<typename T>
 struct CanCachePointer<
-    T, std::void_t<decltype(TypeBridge<std::decay_t<T>>::can_cache_pointer)>> {
+    T, std::void_t<decltype(TypeBridge<T>::can_cache_pointer)>> {
   static constexpr bool value = TypeBridge<T>::can_cache_pointer;
+};
+
+// By default JS object can only be created with "new Class", to allow function
+// calls like "Class()", set allow_function_call to true.
+template<typename, typename = void>
+struct AllowFunctionCall : std::false_type {};
+
+template<typename T>
+struct AllowFunctionCall<
+    T, std::void_t<decltype(Type<T>::allow_function_call)>> {
+  static constexpr bool value = Type<T>::allow_function_call;
 };
 
 // Wrap native object to JS according to its type traits.
@@ -180,6 +191,27 @@ struct Prototype<T, typename std::enable_if<is_function_pointer<
   }
 };
 
+template<typename, typename = void>
+struct InheritanceChain;
+
+// Create a new JS object with T's prorotype chain.
+template<typename T>
+inline napi_value CreateInstance(napi_env env) {
+  // Pass an External to indicate it is called from native code.
+  napi_value external;
+  napi_status s = napi_create_external(env, GetConstructorKey(),
+                                       nullptr, nullptr, &external);
+  if (s != napi_ok)
+    return nullptr;
+  // Create a JS object with "new Class(external)".
+  napi_value constructor = InheritanceChain<T>::Get(env);
+  napi_value object;
+  s = napi_new_instance(env, constructor, 1, &external, &object);
+  if (s != napi_ok)
+    return nullptr;
+  return object;
+}
+
 // Define T's constructor according to its type traits.
 template<typename T, typename Enable = void>
 struct DefineClass {
@@ -226,11 +258,13 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
   }
   static napi_value DispatchToCallback(napi_env env, napi_callback_info info) {
     Arguments args(env, info);
-    if (!args.IsConstructorCall()) {
+    // Only allow constructor call like "new Class()" by default.
+    const bool is_constructor_call = args.IsConstructorCall();
+    if (!AllowFunctionCall<T>::value && !is_constructor_call) {
       napi_throw_error(env, nullptr, "Constructor must be called with new.");
       return nullptr;
     }
-    // If we should let the caller do wrapping.
+    // Let the caller do wrapping if this is called by CreateInstance<T>.
     if (IsCalledFromConverter(args))
       return nullptr;
     // Invoke native constructor.
@@ -239,10 +273,13 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
       napi_throw_error(env, nullptr, "Unable to invoke constructor.");
       return nullptr;
     }
+    // By default we wrap on the |this| object, unless this is a function call.
+    napi_value object = is_constructor_call ? args.This()
+                                            : CreateInstance<T>(env);
     // Then wrap the native pointer.
     auto* data = Wrap<T>::Do(ptr.value());
     using DataType = decltype(data);
-    napi_status s = napi_wrap(env, args.This(), data,
+    napi_status s = napi_wrap(env, object, data,
                               [](napi_env env, void* data, void* ptr) {
       if (internal::CanCachePointer<T>::value)
         InstanceData::Get(env)->DeleteWeakRef<T>(ptr);
@@ -257,7 +294,11 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     // Save weak reference.
     if (internal::CanCachePointer<T>::value)
       InstanceData::Get(env)->AddWeakRef<T>(ptr.value(), args.This());
-    return nullptr;
+    // For constructor call we should never return an object.
+    if (is_constructor_call)
+      return nullptr;
+    else
+      return object;
   }
 };
 
@@ -300,7 +341,7 @@ inline void Inherit(napi_env env, napi_value child, napi_value parent) {
 }
 
 // Get constructor with populated prototype for T.
-template<typename T, typename Enable = void>
+template<typename T, typename Enable>
 struct InheritanceChain {
   // There is no base type.
   static napi_value Get(napi_env env) {

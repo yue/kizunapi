@@ -35,22 +35,15 @@ napi_status ManagePointerInJSWrapper(napi_env env, T* ptr, napi_value* result) {
     if (instance_data->GetWeakRef<T>(ptr, result))
       return napi_ok;
   }
-  // Pass an External to indicate it is called from native code.
-  napi_value external;
-  napi_status s = napi_create_external(env, internal::GetConstructorKey(),
-                                       nullptr, nullptr, &external);
-  if (s != napi_ok)
-    return s;
   // Create a JS object with "new Class(external)".
-  napi_value constructor = internal::InheritanceChain<T>::Get(env);
-  napi_value object;
-  s = napi_new_instance(env, constructor, 1, &external, &object);
-  if (s != napi_ok)
-    return s;
+  napi_value object = internal::CreateInstance<T>(env);
+  if (!object)
+    return napi_generic_failure;
   // Wrap the |ptr| into JS object.
   auto* data = internal::Wrap<T>::Do(ptr);
   using DataType = decltype(data);
-  s = napi_wrap(env, object, data, [](napi_env env, void* data, void* ptr) {
+  napi_status s = napi_wrap(env, object, data,
+                            [](napi_env env, void* data, void* ptr) {
     if (internal::CanCachePointer<T>::value)
       InstanceData::Get(env)->DeleteWeakRef<T>(ptr);
     internal::Finalize<T>::Do(static_cast<DataType>(data));
