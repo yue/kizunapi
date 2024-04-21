@@ -748,7 +748,7 @@ struct Type<std::monostate> {
     napi_valuetype type;
     if (napi_typeof(env, value, &type) != napi_ok)
       return std::nullopt;
-    if (type == napi_boolean || type == napi_null)
+    if (type == napi_undefined || type == napi_null)
       return std::monostate();
     return std::nullopt;
   }
