@@ -257,7 +257,18 @@ struct CallbackInvoker<ReturnType(ArgTypes...)> {
     }
     if (success)
       *success = true;
-    return invoker.DispatchToCallback(holder->callback);
+#if defined(__cpp_exceptions)
+    try {
+#endif
+      return invoker.DispatchToCallback(holder->callback);
+#if defined(__cpp_exceptions)
+    } catch (const std::exception& e) {
+      napi_throw_error(args->Env(), nullptr, e.what());
+      if (success)
+        *success = false;
+      return std::nullopt;
+    }
+#endif
   }
 };
 
@@ -288,7 +299,17 @@ struct CallbackInvoker<void(ArgTypes...)> {
     }
     if (success)
       *success = true;
-    invoker.DispatchToCallback(holder->callback);
+#if defined(__cpp_exceptions)
+    try {
+#endif
+      invoker.DispatchToCallback(holder->callback);
+#if defined(__cpp_exceptions)
+    } catch (const std::exception& e) {
+      napi_throw_error(args->Env(), nullptr, e.what());
+      if (success)
+        *success = false;
+    }
+#endif
   }
 };
 
