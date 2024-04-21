@@ -185,7 +185,7 @@ struct Type<int64_t> {
 
 template<>
 struct Type<uint64_t> {
-  static constexpr const char* name = "Integer";
+  static constexpr const char* name = "BigInt";
   static inline napi_status ToNode(napi_env env,
                                    uint64_t value,
                                    napi_value* result) {
