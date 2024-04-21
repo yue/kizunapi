@@ -16,9 +16,19 @@ inline auto Getter(T func, int flags = 0) {
 }
 
 template<typename T>
+inline auto Getter(MemberFunctionHolder<T> func) {
+  return Getter(func.func, HolderIsFirstArgument);
+}
+
+template<typename T>
 inline auto Setter(T func, int flags = 0) {
   return internal::PropertyMethodHolderFactory<
              T, internal::CallbackType::Setter>::Create(func, flags);
+}
+
+template<typename T>
+inline auto Setter(MemberFunctionHolder<T> func) {
+  return Setter(func.func, HolderIsFirstArgument);
 }
 
 // Defines a JS property with native methods.
