@@ -263,7 +263,7 @@ struct CallbackInvoker<ReturnType(ArgTypes...)> {
       return invoker.DispatchToCallback(holder->callback);
 #if defined(__cpp_exceptions)
     } catch (const std::exception& e) {
-      napi_throw_error(args->Env(), nullptr, e.what());
+      ThrowError(args->Env(), e.what());
       if (success)
         *success = false;
       return std::nullopt;
@@ -305,7 +305,7 @@ struct CallbackInvoker<void(ArgTypes...)> {
       invoker.DispatchToCallback(holder->callback);
 #if defined(__cpp_exceptions)
     } catch (const std::exception& e) {
-      napi_throw_error(args->Env(), nullptr, e.what());
+      ThrowError(args->Env(), e.what());
       if (success)
         *success = false;
     }
@@ -397,7 +397,7 @@ struct V8FunctionInvoker<void(ArgTypes...)> {
     HandleScope handle_scope(env);
     napi_value func = handle->Value();
     if (!func) {
-      napi_throw_error(env, nullptr, "The function has been garbage collected");
+      ThrowError(env, "The function has been garbage collected");
       return;
     }
     std::vector<napi_value> args = {
@@ -421,7 +421,7 @@ struct V8FunctionInvoker<ReturnType(ArgTypes...)> {
     ReturnType ret{};
     napi_value func = handle->Value();
     if (!func) {
-      napi_throw_error(env, nullptr, "The function has been garbage collected");
+      ThrowError(env, "The function has been garbage collected");
       return ret;
     }
     std::vector<napi_value> args = {

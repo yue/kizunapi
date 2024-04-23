@@ -37,7 +37,7 @@ inline bool IsCalledFromConverter(const Arguments& args) {
 // The default constructor.
 inline napi_value DummyConstructor(napi_env env, napi_callback_info info) {
   if (!IsCalledFromConverter(Arguments(env, info)))
-    napi_throw_error(env, nullptr, "There is no constructor defined.");
+    ThrowError(env, "There is no constructor defined.");
   return nullptr;
 }
 
@@ -261,7 +261,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     // Only allow constructor call like "new Class()" by default.
     const bool is_constructor_call = args.IsConstructorCall();
     if (!AllowFunctionCall<T>::value && !is_constructor_call) {
-      napi_throw_error(env, nullptr, "Constructor must be called with new.");
+      ThrowError(env, "Constructor must be called with new.");
       return nullptr;
     }
     // Let the caller do wrapping if this is called by CreateInstance<T>.
@@ -270,7 +270,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     // Invoke native constructor.
     std::optional<T*> ptr = CallbackInvoker<Sig>::Invoke(&args);
     if (!ptr || !ptr.value()) {
-      napi_throw_error(env, nullptr, "Unable to invoke constructor.");
+      ThrowError(env, "Unable to invoke constructor.");
       return nullptr;
     }
     // By default we wrap on the |this| object, unless this is a function call.
@@ -289,7 +289,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     if (s != napi_ok) {
       Finalize<T>::Do(data);
       Destruct<T>::Do(ptr.value());
-      napi_throw_error(env, nullptr, "Unable to wrap native object.");
+      ThrowError(env, "Unable to wrap native object.");
     }
     // Save weak reference.
     if (internal::CanCachePointer<T>::value)

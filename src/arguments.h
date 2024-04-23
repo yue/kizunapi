@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include "src/dict.h"
+#include "src/exception.h"
 
 namespace ki {
 
@@ -112,22 +113,20 @@ class Arguments {
 
   void ThrowError(const char* target_type_name) const {
     if (insufficient_arguments_) {
-      napi_throw_type_error(env_, nullptr, "Insufficient number of arguments.");
+      ThrowTypeError(env_, "Insufficient number of arguments.");
       return;
     }
 
     if (next_ == 0) {
-      std::ostringstream ss;
-      ss << "Error converting \"this\" to " << target_type_name << ".";
-      napi_throw_type_error(env_, nullptr, ss.str().c_str());
+      ThrowTypeError(env_, "Error converting \"this\" to ", target_type_name,
+                           ".");
       return;
     }
 
-    std::ostringstream ss;
-    ss << "Error processing argument at index " << next_ - 1 << ", "
-       << "conversion failure from " << NodeTypeToString(env_, argv_[next_ -1])
-       << " to " << target_type_name << ".";
-    napi_throw_type_error(env_, nullptr, ss.str().c_str());
+    ThrowTypeError(env_, "Error processing argument at index ", next_ - 1,
+                         ", conversion failure from ",
+                         NodeTypeToString(env_, argv_[next_ -1]),
+                         " to ", target_type_name, ".");
   }
 
   bool NoMoreArgs() const { return insufficient_arguments_; }
