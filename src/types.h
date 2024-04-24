@@ -491,8 +491,15 @@ struct Type<std::optional<T>> {
       return napi_get_undefined(env, result);
     return ConvertToNode(env, *value, result);
   }
-  // There is FromNode defined by default, as it is usually automatically
-  // handled by ArgConverter.
+  static std::optional<std::optional<T>> FromNode(napi_env env,
+                                                  napi_value value) {
+    napi_valuetype type;
+    if (napi_typeof(env, value, &type) != napi_ok)
+      return std::nullopt;
+    if (type == napi_undefined || type == napi_null)
+      return std::optional<T>();
+    return Type<T>::FromNode(env, value);
+  }
 };
 
 template<typename T>

@@ -67,10 +67,12 @@ template<typename T>
 struct ArgConverter<std::optional<T>> {
   static inline std::optional<std::optional<T>> GetNext(
       Arguments* args, int flags, bool is_first) {
-    std::optional<T> result = ArgConverter<T>::GetNext(args, flags, is_first);
-    if (!result && !args->NoMoreArgs())  // error if type mis-match
-      return std::nullopt;
-    return result;
+    std::optional<std::optional<T>> result = args->GetNext<std::optional<T>>();
+    if (result)  // success conversion
+      return result;
+    if (args->NoMoreArgs())  // arg is omitted
+      return std::optional<T>();
+    return std::nullopt;
   }
 };
 
