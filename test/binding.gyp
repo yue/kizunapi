@@ -12,6 +12,9 @@
           'AdditionalOptions': [ '/std:c++17' ],
         },
       },
+      'defines': [
+        'NAPI_VERSION=9',
+      ],
       'sources': [
         'main.cc',
         'callback_tests.cc',
