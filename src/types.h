@@ -388,29 +388,34 @@ struct Type<napi_env> {
 };
 
 // Optimized helper for creating symbols.
-template<size_t n>
 struct SymbolHolder {
+  bool symbol_for;
   const char* str;
 };
 
-template<size_t n>
-inline SymbolHolder<n> Symbol(const char (&value)[n]) {
-  SymbolHolder<n> holder;
-  holder.str = value;
-  return holder;
+inline SymbolHolder Symbol(const char* str) {
+  return {false, str};
 }
 
-template<size_t n>
-struct Type<SymbolHolder<n>> {
+inline SymbolHolder SymbolFor(const char* str) {
+  return {true, str};
+}
+
+template<>
+struct Type<SymbolHolder> {
   static constexpr const char* name = "Symbol";
   static inline napi_status ToNode(napi_env env,
-                                   SymbolHolder<n> value,
+                                   SymbolHolder value,
                                    napi_value* result) {
     napi_value symbol;
-    napi_status s = Type<char[n]>::ToNode(env, value.str, &symbol);
-    if (s != napi_ok)
-      return s;
-    return napi_create_symbol(env, symbol, result);
+    if (value.symbol_for) {
+      return node_api_symbol_for(env, value.str, NAPI_AUTO_LENGTH, result);
+    } else {
+      napi_status s = Type<const char*>::ToNode(env, value.str, &symbol);
+      if (s != napi_ok)
+        return s;
+      return napi_create_symbol(env, symbol, result);
+    }
   }
 };
 

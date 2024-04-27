@@ -4,8 +4,6 @@
 #ifndef SRC_ARGUMENTS_H_
 #define SRC_ARGUMENTS_H_
 
-#include <sstream>
-
 #include "src/dict.h"
 #include "src/exception.h"
 
