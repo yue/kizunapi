@@ -130,6 +130,7 @@ class Arguments {
   }
 
   bool NoMoreArgs() const { return insufficient_arguments_; }
+  size_t RemainingsLength() const { return argc_ - next_; }
 
   napi_value This() const { return this_; }
   void* Data() const { return data_; }
