@@ -93,6 +93,10 @@ class Persistent {
     return !ref_;
   }
 
+  void* Id() const {
+    return ref_;
+  }
+
  private:
   uint32_t Unref() {
     if (!ref_ || is_weak_)
