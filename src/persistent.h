@@ -93,7 +93,7 @@ class Persistent {
     return !ref_;
   }
 
-  void* Id() const {
+  napi_ref Id() const {
     return ref_;
   }
 
@@ -126,6 +126,20 @@ class Persistent {
   napi_env env_ = nullptr;
   napi_ref ref_ = nullptr;
   bool is_weak_ = false;
+};
+
+template<>
+struct Type<Persistent> {
+  static constexpr const char* name = "Value";
+  static napi_status ToNode(napi_env env,
+                            const ki::Persistent& handle,
+                            napi_value* result) {
+    return napi_get_reference_value(env, handle.Id(), result);
+  }
+  static inline std::optional<Persistent> FromNode(napi_env env,
+                                                   napi_value value) {
+    return Persistent(env, value);
+  }
 };
 
 }  // namespace ki
