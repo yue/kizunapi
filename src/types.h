@@ -614,6 +614,8 @@ struct Type<T, std::enable_if_t<  // is map type
   }
   static std::optional<T> FromNode(napi_env env,
                                    napi_value object) {
+    if (!IsType(env, object, napi_object))
+      return std::nullopt;
     napi_value property_names;
     if (napi_get_property_names(env, object, &property_names) != napi_ok)
       return std::nullopt;
