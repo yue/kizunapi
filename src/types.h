@@ -183,24 +183,6 @@ struct Type<int64_t> {
   }
 };
 
-template<>
-struct Type<uint64_t> {
-  static constexpr const char* name = "BigInt";
-  static inline napi_status ToNode(napi_env env,
-                                   uint64_t value,
-                                   napi_value* result) {
-    return napi_create_bigint_uint64(env, value, result);
-  }
-  static inline std::optional<uint64_t> FromNode(napi_env env,
-                                                 napi_value value) {
-    uint64_t result;
-    bool lossless;
-    if (napi_get_value_bigint_uint64(env, value, &result, &lossless) == napi_ok)
-      return result;
-    return std::nullopt;
-  }
-};
-
 #if defined(__APPLE__)
 template<>
 struct Type<size_t> {
@@ -251,6 +233,23 @@ struct Type<double> {
     if (napi_get_value_double(env, value, &result) == napi_ok)
       return result;
     return std::nullopt;
+  }
+};
+
+template<>
+struct Type<uint64_t> {
+  static constexpr const char* name = "Integer";
+  static inline napi_status ToNode(napi_env env,
+                                   uint64_t value,
+                                   napi_value* result) {
+    return Type<double>::ToNode(env, static_cast<double>(value), result);
+  }
+  static inline std::optional<uint64_t> FromNode(napi_env env,
+                                                 napi_value value) {
+    auto result = Type<double>::FromNode(env, value);
+    if (!result)
+      return std::nullopt;
+    return static_cast<uint64_t>(*result);
   }
 };
 
