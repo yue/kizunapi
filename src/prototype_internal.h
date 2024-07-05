@@ -293,7 +293,7 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     }
     // Save weak reference.
     if (internal::CanCachePointer<T>::value)
-      InstanceData::Get(env)->AddWeakRef<T>(ptr.value(), args.This());
+      InstanceData::Get(env)->AddWeakRef<T>(ptr.value(), object);
     // For constructor call we should never return an object.
     if (is_constructor_call)
       return nullptr;
