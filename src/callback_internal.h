@@ -447,6 +447,34 @@ struct V8FunctionInvoker<ReturnType(ArgTypes...)> {
   }
 };
 
+template<typename... ArgTypes>
+struct V8FunctionInvoker<napi_value(ArgTypes...)> {
+  static napi_value Go(napi_env env, Persistent* handle, ArgTypes&&... raw) {
+    EscapableHandleScope handle_scope(env);
+    napi_value func = handle->Value();
+    if (!func) {
+      ThrowError(env, "The function has been garbage collected");
+      return nullptr;
+    }
+    std::vector<napi_value> args = {
+        ToNode(env, std::forward<ArgTypes>(raw))...
+    };
+    napi_value result;
+    napi_status s = napi_make_callback(env, nullptr, func, func, args.size(),
+                                       args.empty() ? nullptr: &args.front(),
+                                       &result);
+    if (s == napi_ok) {
+      return handle_scope.Escape(result);
+    }
+    if (s == napi_pending_exception) {
+      napi_value fatal_exception;
+      napi_get_and_clear_last_exception(env, &fatal_exception);
+      napi_fatal_exception(env, fatal_exception);
+    }
+    return nullptr;
+  }
+};
+
 }  // namespace internal
 
 }  // namespace ki
