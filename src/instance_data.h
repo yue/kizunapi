@@ -126,16 +126,21 @@ class InstanceData {
     return true;
   }
 
+  // DeleteWeakRef returns false if there is no weak ref existing for ptr, which
+  // would only happen when user has removed the weak ref manually.
   template<typename T>
-  void DeleteWeakRef(void* ptr) {
+  bool DeleteWeakRef(void* ptr) {
     WeakRefKey key{internal::TopClass<T>::name, ptr};
     auto it = weak_refs_.find(key);
-    if (it == weak_refs_.end()) {
-      assert(false);
-      return;
-    }
+    if (it == weak_refs_.end())
+      return false;
     if (--it->second.first == 0)
       weak_refs_.erase(it);
+    return true;
+  }
+
+  size_t WeakRefsSize() const {
+    return weak_refs_.size();
   }
 
  private:

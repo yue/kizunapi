@@ -44,8 +44,11 @@ napi_status ManagePointerInJSWrapper(napi_env env, T* ptr, napi_value* result) {
   using DataType = decltype(data);
   napi_status s = napi_wrap(env, object, data,
                             [](napi_env env, void* data, void* ptr) {
-    if (internal::CanCachePointer<T>::value)
-      InstanceData::Get(env)->DeleteWeakRef<T>(ptr);
+    if (internal::CanCachePointer<T>::value) {
+      // If the weak ref has already been removed, do not run finalizer.
+      if (!InstanceData::Get(env)->DeleteWeakRef<T>(ptr))
+        return;
+    }
     internal::Finalize<T>::Do(static_cast<DataType>(data));
   }, ptr, nullptr);
   if (s != napi_ok) {
