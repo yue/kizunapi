@@ -98,10 +98,13 @@ class InstanceData {
   }
 
   template<typename T>
-  void DeleteWrapper(void* ptr) {
+  bool DeleteWrapper(void* ptr) {
     WrapperKey key{internal::TopClass<T>::name, ptr};
-    assert(wrappers_.find(key) != wrappers_.end());
+    auto it = wrappers_.find(key);
+    if (it == wrappers_.end())
+      return false;
     wrappers_.erase(key);
+    return true;
   }
 
  private:
