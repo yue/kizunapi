@@ -18,6 +18,10 @@ class Persistent {
     assert(s == napi_ok);
   }
 
+  // This is only used for storing the result of napi_wrap.
+  Persistent(napi_env env, napi_ref ref)
+      : env_(env), ref_(ref), is_weak_(true) {}
+
   Persistent() {}
 
   Persistent(const Persistent& other) {
@@ -87,6 +91,12 @@ class Persistent {
     napi_value result = nullptr;
     napi_get_reference_value(env_, ref_, &result);
     return result;
+  }
+
+  napi_ref Release() {
+    napi_ref ref = ref_;
+    ref_ = nullptr;
+    return ref;
   }
 
   bool IsEmpty() const {

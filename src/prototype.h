@@ -30,11 +30,9 @@ struct Type<Class<T>> {
 template<typename T>
 napi_status ManagePointerInJSWrapper(napi_env env, T* ptr, napi_value* result) {
   InstanceData* instance_data = InstanceData::Get(env);
-  if (internal::CanCachePointer<T>::value) {
-    // Check if there is already a JS object created.
-    if (instance_data->GetWeakRef<T>(ptr, result))
-      return napi_ok;
-  }
+  // Check if there is already a JS object created.
+  if (instance_data->GetWrapper<T>(ptr, result))
+    return napi_ok;
   // Create a JS object with "new Class(external)".
   napi_value object = internal::CreateInstance<T>(env);
   if (!object)
@@ -42,22 +40,18 @@ napi_status ManagePointerInJSWrapper(napi_env env, T* ptr, napi_value* result) {
   // Wrap the |ptr| into JS object.
   auto* data = internal::Wrap<T>::Do(ptr);
   using DataType = decltype(data);
+  napi_ref ref;
   napi_status s = napi_wrap(env, object, data,
                             [](napi_env env, void* data, void* ptr) {
-    if (internal::CanCachePointer<T>::value) {
-      // If the weak ref has already been removed, do not run finalizer.
-      if (!InstanceData::Get(env)->DeleteWeakRef<T>(ptr))
-        return;
-    }
+    InstanceData::Get(env)->DeleteWrapper<T>(ptr);
     internal::Finalize<T>::Do(static_cast<DataType>(data));
-  }, ptr, nullptr);
+  }, ptr, &ref);
   if (s != napi_ok) {
     internal::Finalize<T>::Do(data);
     return s;
   }
-  // Save weak reference.
-  if (internal::CanCachePointer<T>::value)
-    instance_data->AddWeakRef<T>(ptr, object);
+  // Save wrapper.
+  instance_data->AddWrapper<T>(ptr, ref);
   *result = object;
   return napi_ok;
 }
@@ -92,12 +86,6 @@ struct Type<T*, std::enable_if_t<!std::is_const_v<T> &&
     void* result;
     if (napi_unwrap(env, value, &result) != napi_ok)
       return std::nullopt;
-    if (internal::CanCachePointer<T>::value) {
-      // Check if the pointer has been released by user.
-      napi_value obj;
-      if (!InstanceData::Get(env)->GetWeakRef<T>(result, &obj))
-        return std::nullopt;
-    }
     if (!internal::IsInstanceOf<T>(env, value))
       return std::nullopt;
     T* ptr = internal::Unwrap<T>::Do(result);

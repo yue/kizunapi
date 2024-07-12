@@ -74,20 +74,6 @@ template<typename T>
 struct HasDestructor<T, std::void_t<decltype(Type<T>::Destructor)>>
     : std::true_type {};
 
-// Whether the JS object can be cached using the pointer as key.
-// For heap allocated types this is usually true because they have different
-// pointers, however for stack allocated types this is false as the same type
-// may be created frequently on stack with the same pointer (for example the
-// painter pointer in on_draw handler).
-template<typename, typename = void>
-struct CanCachePointer : std::true_type {};
-
-template<typename T>
-struct CanCachePointer<
-    T, std::void_t<decltype(TypeBridge<T>::can_cache_pointer)>> {
-  static constexpr bool value = TypeBridge<T>::can_cache_pointer;
-};
-
 // By default JS object can only be created with "new Class", to allow function
 // calls like "Class()", set allow_function_call to true.
 template<typename, typename = void>
@@ -279,24 +265,20 @@ struct DefineClass<T, typename std::enable_if<is_function_pointer<
     // Then wrap the native pointer.
     auto* data = Wrap<T>::Do(ptr.value());
     using DataType = decltype(data);
+    napi_ref ref;
     napi_status s = napi_wrap(env, object, data,
                               [](napi_env env, void* data, void* ptr) {
-      if (internal::CanCachePointer<T>::value) {
-        // If the weak ref has already been removed, do not run finalizer.
-        if (!InstanceData::Get(env)->DeleteWeakRef<T>(ptr))
-          return;
-      }
+      InstanceData::Get(env)->DeleteWrapper<T>(ptr);
       Finalize<T>::Do(static_cast<DataType>(data));
       Destruct<T>::Do(static_cast<T*>(ptr));
-    }, ptr.value(), nullptr);
+    }, ptr.value(), &ref);
     if (s != napi_ok) {
       Finalize<T>::Do(data);
       Destruct<T>::Do(ptr.value());
       ThrowError(env, "Unable to wrap native object.");
     }
-    // Save weak reference.
-    if (internal::CanCachePointer<T>::value)
-      InstanceData::Get(env)->AddWeakRef<T>(ptr.value(), object);
+    // Save wrapper.
+    InstanceData::Get(env)->AddWrapper<T>(ptr.value(), ref);
     // For constructor call we should never return an object.
     if (is_constructor_call)
       return nullptr;

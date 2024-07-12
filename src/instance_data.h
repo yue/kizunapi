@@ -77,70 +77,31 @@ class InstanceData {
   // address of the class itself, so 1 pointer can actually represent 2
   // different instances. To avoid duplicate key for different instances, we
   // also include typename as part of the key.
-  using WeakRefKey = std::pair<const char*, void*>;
+  using WrapperKey = std::pair<const char*, void*>;
 
-  // The garbage collection in V8 has 2 phases:
-  // 1. Garbage collect the unused object, which makes the object stored in
-  //    weak ref become undefined;
-  // 2. Call the finalizer of the object, which usually calls DeleteWeakRef
-  //    in it to remove the weak ref.
-  //
-  // So when we are between 1 and 2, the weak ref is alive because the finalizer
-  // has not been called, but the object in it has become undefined. If we call
-  // AddWeakRef with the same |key|, which usually happens when converting a ptr
-  // to JS immediately after its previous JS wrapper gets GCed, we will have 2
-  // different weak refs with the same |key|, with a pending finalizer to remove
-  // the previous weak ref.
-  //
-  // In order to make all finalizers happily call DeleteWeakRef without removing
-  // the current weak ref which points to the living object, we are doing a ref
-  // counted policy here:
-  // 1. In AddWeakRef, if there is a weak ref with |key|, add ref count, and
-  //    replace the weak ref with the ref to current value.
-  // 2. In DeleteWeakRef, only remove the whole |key| when ref count drops to 0.
+  // Used to store the results of napi_wrap, it is caller's responsibility to
+  // destroy the result.
   template<typename T>
-  void AddWeakRef(void* ptr, napi_value value) {
-    WeakRefKey key{internal::TopClass<T>::name, ptr};
-    auto it = weak_refs_.find(key);
-    if (it != weak_refs_.end()) {
-      it->second.first++;
-      it->second.second = Persistent(env_, value, 0);
-    } else {
-      weak_refs_.emplace(key, std::make_pair(1, Persistent(env_, value, 0)));
-    }
+  void AddWrapper(void* ptr, napi_ref ref) {
+    WrapperKey key{internal::TopClass<T>::name, ptr};
+    wrappers_.emplace(key, Persistent(env_, ref));
   }
 
   template<typename T>
-  bool GetWeakRef(void* ptr, napi_value* out) const {
-    WeakRefKey key{internal::TopClass<T>::name, ptr};
-    auto it = weak_refs_.find(key);
-    if (it == weak_refs_.end())
+  bool GetWrapper(void* ptr, napi_value* result) const {
+    WrapperKey key{internal::TopClass<T>::name, ptr};
+    auto it = wrappers_.find(key);
+    if (it == wrappers_.end())
       return false;
-    napi_value result = it->second.second.Value();
-    if (!result) {
-      // Betwen GC phase 1 and 2, the weak ref exists but object becomes
-      // undefined, we want to create a new object in this case so return false.
-      return false;
-    }
-    *out = result;
-    return true;
+    *result = it->second.Value();
+    return *result != nullptr;
   }
 
-  // DeleteWeakRef returns false if there is no weak ref existing for ptr, which
-  // would only happen when user has removed the weak ref manually.
   template<typename T>
-  bool DeleteWeakRef(void* ptr) {
-    WeakRefKey key{internal::TopClass<T>::name, ptr};
-    auto it = weak_refs_.find(key);
-    if (it == weak_refs_.end())
-      return false;
-    if (--it->second.first == 0)
-      weak_refs_.erase(it);
-    return true;
-  }
-
-  size_t WeakRefsSize() const {
-    return weak_refs_.size();
+  void DeleteWrapper(void* ptr) {
+    WrapperKey key{internal::TopClass<T>::name, ptr};
+    assert(wrappers_.find(key) != wrappers_.end());
+    wrappers_.erase(key);
   }
 
  private:
@@ -148,10 +109,18 @@ class InstanceData {
       : env_(env),
         attached_tables_(env, WeakMap(env)) {}
 
+  ~InstanceData() {
+    // Node frees all references on exit whether they belong to user or runtime,
+    // so we have to leak them to avoid double free.
+    for (auto& [key, handle] : wrappers_) {
+      handle.Release();
+    }
+  }
+
   napi_env env_;
   Persistent attached_tables_;
   std::map<void*, Persistent> strong_refs_;
-  std::map<WeakRefKey, std::pair<uint32_t, Persistent>> weak_refs_;
+  std::map<WrapperKey, Persistent> wrappers_;
 
   const int tag_ = 0x8964;
 };
