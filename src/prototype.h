@@ -92,6 +92,12 @@ struct Type<T*, std::enable_if_t<!std::is_const_v<T> &&
     void* result;
     if (napi_unwrap(env, value, &result) != napi_ok)
       return std::nullopt;
+    if (internal::CanCachePointer<T>::value) {
+      // Check if the pointer has been released by user.
+      napi_value obj;
+      if (!InstanceData::Get(env)->GetWeakRef<T>(result, &obj))
+        return std::nullopt;
+    }
     if (!internal::IsInstanceOf<T>(env, value))
       return std::nullopt;
     T* ptr = internal::Unwrap<T>::Do(result);
