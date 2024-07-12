@@ -107,6 +107,10 @@ class InstanceData {
     return true;
   }
 
+  size_t GetWrappersCount() const {
+    return wrappers_.size();
+  }
+
  private:
   explicit InstanceData(napi_env env)
       : env_(env),
