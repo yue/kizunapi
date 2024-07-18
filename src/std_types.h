@@ -1,7 +1,7 @@
 #ifndef SRC_STD_TYPES_H_
 #define SRC_STD_TYPES_H_
 
-#include "src/types.h"
+#include "src/iterator.h"
 
 #include <set>
 #include <string>
@@ -81,23 +81,12 @@ struct Type<std::vector<T>> {
   }
   static std::optional<std::vector<T>> FromNode(napi_env env,
                                                 napi_value value) {
-    if (!IsArray(env, value))
+    std::vector<T> r;
+    if (!IterateArray<T>(env, value,
+                         [&](uint32_t i, T v) { r.push_back(std::move(v)); })) {
       return std::nullopt;
-    uint32_t length;
-    if (napi_get_array_length(env, value, &length) != napi_ok)
-      return std::nullopt;
-    std::vector<T> result;
-    result.reserve(length);
-    for (uint32_t i = 0; i < length; ++i) {
-      napi_value el = nullptr;
-      if (napi_get_element(env, value, i, &el) != napi_ok)
-        return std::nullopt;
-      std::optional<T> out = FromNodeTo<T>(env, el);
-      if (!out)
-        return std::nullopt;
-      result.push_back(std::move(*out));
     }
-    return result;
+    return r;
   }
 };
 
@@ -121,23 +110,12 @@ struct Type<std::set<T>> {
   }
   static std::optional<std::set<T>> FromNode(napi_env env,
                                              napi_value value) {
-    if (!IsArray(env, value))
+    std::set<T> r;
+    if (!IterateArray<T>(env, value,
+                         [&](uint32_t i, T v) { r.insert(std::move(v)); })) {
       return std::nullopt;
-    uint32_t length;
-    if (napi_get_array_length(env, value, &length) != napi_ok)
-      return std::nullopt;
-    std::set<T> result;
-    result.reserve(length);
-    for (uint32_t i = 0; i < length; ++i) {
-      napi_value el;
-      if (napi_get_element(env, value, i, &el) != napi_ok)
-        return std::nullopt;
-      std::optional<T> element = FromNodeTo<T>(env, el);
-      if (!element)
-        return std::nullopt;
-      result.insert(std::move(*element));
     }
-    return result;
+    return r;
   }
 };
 
