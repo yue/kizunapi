@@ -6,6 +6,7 @@
 
 #include "src/callback.h"
 #include "src/prototype.h"
+#include "src/std_types.h"
 #include "src/wrap_method.h"
 
 #endif  // KIZUNAPI_H_
