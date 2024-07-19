@@ -81,12 +81,15 @@ struct Type<std::vector<T>> {
   }
   static std::optional<std::vector<T>> FromNode(napi_env env,
                                                 napi_value value) {
-    std::vector<T> r;
+    std::vector<T> result;
     if (!IterateArray<T>(env, value,
-                         [&](uint32_t i, T v) { r.push_back(std::move(v)); })) {
+                         [&](uint32_t i, T value) {
+                           result.push_back(std::move(value));
+                           return true;
+                         })) {
       return std::nullopt;
     }
-    return r;
+    return result;
   }
 };
 
@@ -110,12 +113,15 @@ struct Type<std::set<T>> {
   }
   static std::optional<std::set<T>> FromNode(napi_env env,
                                              napi_value value) {
-    std::set<T> r;
+    std::set<T> result;
     if (!IterateArray<T>(env, value,
-                         [&](uint32_t i, T v) { r.insert(std::move(v)); })) {
+                         [&](uint32_t i, T value) {
+                           result.insert(std::move(value));
+                           return true;
+                         })) {
       return std::nullopt;
     }
-    return r;
+    return result;
   }
 };
 
@@ -147,26 +153,13 @@ struct Type<T, std::enable_if_t<  // is map type
   }
   static std::optional<T> FromNode(napi_env env,
                                    napi_value object) {
-    if (!IsType(env, object, napi_object))
-      return std::nullopt;
-    napi_value property_names;
-    if (napi_get_property_names(env, object, &property_names) != napi_ok)
-      return std::nullopt;
-    auto keys = FromNodeTo<std::vector<napi_value>>(env, property_names);
-    if (!keys)
-      return std::nullopt;
     T result;
-    for (napi_value key : *keys) {
-      std::optional<K> k = FromNodeTo<K>(env, key);
-      if (!k)
-        return std::nullopt;
-      napi_value value;
-      if (napi_get_property(env, object, key, &value) != napi_ok)
-        return std::nullopt;
-      std::optional<V> v = FromNodeTo<V>(env, value);
-      if (!v)
-        return std::nullopt;
-      result.emplace(std::move(*k), std::move(*v));
+    if (!IterateObject<K, V>(env, object,
+                             [&result](K key, V value) {
+                               result.emplace(std::move(key), std::move(value));
+                               return true;
+                             })) {
+      return std::nullopt;
     }
     return result;
   }
