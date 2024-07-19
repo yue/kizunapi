@@ -6,6 +6,7 @@
 #define SRC_CALLBACK_INTERNAL_H_
 
 #include <functional>
+#include <variant>
 
 #include "src/arguments.h"
 #include "src/napi_util.h"
