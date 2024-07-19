@@ -1,13 +1,16 @@
+// Copyright (c) zcbenz.
+// Licensed under the MIT License.
+
 #ifndef SRC_STD_TYPES_H_
 #define SRC_STD_TYPES_H_
-
-#include "src/iterator.h"
 
 #include <set>
 #include <string>
 #include <tuple>
 #include <variant>
 #include <vector>
+
+#include "src/iterator.h"
 
 namespace ki {
 

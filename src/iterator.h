@@ -1,3 +1,6 @@
+// Copyright (c) zcbenz.
+// Licensed under the MIT License.
+
 #ifndef SRC_ITERATOR_H_
 #define SRC_ITERATOR_H_
 
