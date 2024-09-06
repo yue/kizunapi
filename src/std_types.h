@@ -175,7 +175,7 @@ struct Type<std::optional<T>> {
                             const std::optional<T>& value,
                             napi_value* result) {
     if (!value)
-      return napi_get_null(env, result);
+      return napi_get_undefined(env, result);
     return ConvertToNode(env, *value, result);
   }
   static std::optional<std::optional<T>> FromNode(napi_env env,
@@ -303,9 +303,9 @@ struct Type<std::variant<ArgTypes...>> {
 // we consider the type accepting undefined/null.
 template<>
 struct Type<std::monostate> {
-  static constexpr const char* name = "";  // no name for monostate
+  static constexpr const char* name = "undefined";
   static napi_status ToNode(napi_env env, std::monostate, napi_value* result) {
-    return napi_get_null(env, result);
+    return napi_get_undefined(env, result);
   }
   static inline std::optional<std::monostate> FromNode(napi_env env,
                                                        napi_value value) {
