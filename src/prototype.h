@@ -85,7 +85,7 @@ struct Type<T*, std::enable_if_t<!std::is_const_v<T> &&
   static inline std::optional<T*> FromNode(napi_env env, napi_value value) {
     void* result;
     if (napi_unwrap(env, value, &result) != napi_ok)
-      return std::nullopt;
+      return internal::AllocateFromNode<T>::Do(env, value);
     if (!internal::IsInstanceOf<T>(env, value))
       return std::nullopt;
     T* ptr = internal::Unwrap<T>::Do(result);

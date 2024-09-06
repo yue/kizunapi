@@ -9,6 +9,9 @@
 
 namespace ki {
 
+template<typename T>
+napi_status ManagePointerInJSWrapper(napi_env env, T* ptr, napi_value* result);
+
 template<typename>
 struct AllowPassByValue;
 
@@ -119,6 +122,28 @@ struct Unwrap<T, typename std::enable_if<is_function_pointer<
   static inline T* Do(void* ptr) {
     using WrapReturnType = decltype(TypeBridge<T>::Wrap(nullptr));
     return TypeBridge<T>::Unwrap(static_cast<WrapReturnType>(ptr));
+  }
+};
+
+// Users can define a Type<T>::AllocateFromNode method to allow converting
+// a napi_value to T*, which will be wrapped and stored ina newly allocated JS
+// object.
+template<typename T, typename Enable = void>
+struct AllocateFromNode {
+  static inline std::optional<T*> Do(napi_env env, napi_value value) {
+    return std::nullopt;
+  }
+};
+
+template<typename T>
+struct AllocateFromNode<
+    T, typename std::enable_if<is_function_pointer<
+           decltype(&Type<T>::AllocateFromNode)>::value>::type> {
+  static inline std::optional<T*> Do(napi_env env, napi_value value) {
+    static_assert(HasWrap<T>::value && HasUnwrap<T>::value,
+                  "TypeBridge<T>::Wrap/Unwrap must be defined when providing "
+                  "the Type<T>::AllocateFromNode method.");
+    return Type<T>::AllocateFromNode(env, value);
   }
 };
 
