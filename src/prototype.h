@@ -60,14 +60,13 @@ napi_status ManagePointerInJSWrapper(napi_env env, T* ptr, napi_value* result) {
 template<typename T, typename Enable = void>
 struct HasKiType : std::false_type {};
 template<typename T>
-struct HasKiType<T, std::enable_if_t<std::is_same_v<const char*,
-                                                    decltype(Type<T>::name)>>>
+struct HasKiType<T, std::enable_if_t<std::is_class_v<T> &&
+                                     std::is_const_v<decltype(Type<T>::name)>>>
     : std::true_type {};
 
 // Default converter for pointers.
 template<typename T>
-struct Type<T*, std::enable_if_t<!std::is_const_v<T> &&
-                                 HasKiType<Type<T>>::value>> {
+struct Type<T*, std::enable_if_t<!std::is_const_v<T> && HasKiType<T>::value>> {
   static constexpr const char* name = Type<T>::name;
 
  private:
@@ -104,8 +103,7 @@ struct Type<T*, std::enable_if_t<!std::is_const_v<T> &&
 
 // Default converter for const pointers.
 template<typename T>
-struct Type<T*, std::enable_if_t<std::is_const_v<T> &&
-                                 HasKiType<Type<T>>::value>> {
+struct Type<T*, std::enable_if_t<std::is_const_v<T> && HasKiType<T>::value>> {
   static constexpr const char* name = Type<std::decay_t<T>>::name;
   static inline napi_status ToNode(napi_env env, T* ptr, napi_value* result) {
     return ConvertToNode(env, const_cast<std::decay_t<T>*>(ptr), result);
