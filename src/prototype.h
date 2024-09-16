@@ -61,7 +61,8 @@ template<typename T, typename Enable = void>
 struct HasKiType : std::false_type {};
 template<typename T>
 struct HasKiType<T, std::enable_if_t<std::is_class_v<T> &&
-                                     std::is_const_v<decltype(Type<T>::name)>>>
+                                     std::is_const_v<decltype(
+                                         Type<std::decay_t<T>>::name)>>>
     : std::true_type {};
 
 // Default converter for pointers.
