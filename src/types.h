@@ -392,10 +392,32 @@ inline napi_value CreateObject(napi_env env) {
   return value;
 }
 
-inline bool IsArray(napi_env env, napi_value value) {
+inline bool IsTypeHelper(napi_env env,
+                         napi_value value,
+                         napi_status (*func)(napi_env, napi_value, bool*)) {
   bool result = false;
-  napi_is_array(env, value, &result);
+  func(env, value, &result);
   return result;
+}
+
+inline bool IsArray(napi_env env, napi_value value) {
+  return IsTypeHelper(env, value, napi_is_array);
+}
+
+inline bool IsArrayBuffer(napi_env env, napi_value value) {
+  return IsTypeHelper(env, value, napi_is_arraybuffer);
+}
+
+inline bool IsBuffer(napi_env env, napi_value value) {
+  return IsTypeHelper(env, value, napi_is_buffer);
+}
+
+inline bool IsDataView(napi_env env, napi_value value) {
+  return IsTypeHelper(env, value, napi_is_dataview);
+}
+
+inline bool IsTypedArray(napi_env env, napi_value value) {
+  return IsTypeHelper(env, value, napi_is_typedarray);
 }
 
 inline bool IsType(napi_env env, napi_value value, napi_valuetype target) {
