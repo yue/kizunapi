@@ -66,21 +66,26 @@ struct Type<std::u16string> {
 };
 
 template<typename T>
+napi_status VectorLikeToNode(napi_env env, const T& vec, napi_value* result) {
+  napi_status s = napi_create_array_with_length(env, vec.size(), result);
+  if (s != napi_ok) return s;
+  for (size_t i = 0; i < vec.size(); ++i) {
+    napi_value el;
+    s = ConvertToNode(env, vec[i], &el);
+    if (s != napi_ok) return s;
+    s = napi_set_element(env, *result, i, el);
+    if (s != napi_ok) return s;
+  }
+  return napi_ok;
+}
+
+template<typename T>
 struct Type<std::vector<T>> {
   static constexpr const char* name = "Array";
-  static napi_status ToNode(napi_env env,
-                            const std::vector<T>& vec,
-                            napi_value* result) {
-    napi_status s = napi_create_array_with_length(env, vec.size(), result);
-    if (s != napi_ok) return s;
-    for (size_t i = 0; i < vec.size(); ++i) {
-      napi_value el;
-      s = ConvertToNode(env, vec[i], &el);
-      if (s != napi_ok) return s;
-      s = napi_set_element(env, *result, i, el);
-      if (s != napi_ok) return s;
-    }
-    return napi_ok;
+  static inline napi_status ToNode(napi_env env,
+                                   const std::vector<T>& vec,
+                                   napi_value* result) {
+    return VectorLikeToNode(env, vec, result);
   }
   static std::optional<std::vector<T>> FromNode(napi_env env,
                                                 napi_value value) {
