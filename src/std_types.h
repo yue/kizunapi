@@ -96,11 +96,18 @@ struct Type<std::vector<T>> {
   }
 };
 
+// Converter for std::set/std::unordered_set.
 template<typename T>
-struct Type<std::set<T>> {
+struct Type<T, std::enable_if_t<  // is set type
+                   std::is_same_v<typename T::value_type,
+                                  typename T::key_type> &&
+                   std::is_same_v<typename T::size_type,
+                                  decltype(
+                                      T().count(typename T::value_type()))>>> {
+  using V = typename T::value_type;
   static constexpr const char* name = "Array";
   static napi_status ToNode(napi_env env,
-                            const std::set<T>& vec,
+                            const T& vec,
                             napi_value* result) {
     napi_status s = napi_create_array_with_length(env, vec.size(), result);
     if (s != napi_ok) return s;
@@ -114,11 +121,10 @@ struct Type<std::set<T>> {
     }
     return napi_ok;
   }
-  static std::optional<std::set<T>> FromNode(napi_env env,
-                                             napi_value value) {
-    std::set<T> result;
-    if (!IterateArray<T>(env, value,
-                         [&](uint32_t i, T value) {
+  static std::optional<T> FromNode(napi_env env, napi_value value) {
+    T result;
+    if (!IterateArray<V>(env, value,
+                         [&](uint32_t i, V value) {
                            result.insert(std::move(value));
                            return true;
                          })) {
