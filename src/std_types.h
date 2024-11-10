@@ -196,7 +196,7 @@ struct Type<std::optional<T>> {
       return std::nullopt;
     if (type == napi_undefined || type == napi_null)
       return std::optional<T>();
-    return Type<T>::FromNode(env, value);
+    return FromNodeTo<T>(env, value);
   }
 };
 
